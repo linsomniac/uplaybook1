@@ -1,0 +1,119 @@
+#!/usr/bin/env python3
+
+
+import sys
+import os
+import jinja2
+import subprocess
+import tempfile
+import shutil
+import gnupg
+import oyaml as yaml
+from typing import Union
+
+
+class CommandProcessor:
+    def __init__(self):
+        self.config = {}
+
+    def jinja_expand_str(self, s: str, env: Union[None, dict] = None) -> str:
+        env = self.config.copy()
+        if env != None:
+            env.update(env)
+        return jinja2.Template(s).render(env)
+
+    def jinja_expand_dict(self, d: dict) -> dict:
+        env = self.config.copy()
+        results = {}
+        for k, v in d.items():
+            newv = jinja2.Template(v).render(env)
+            env[k] = newv
+            results[k] = newv
+
+        return results
+
+    def decrypt(self, src: str, password: str) -> str:
+        gpg = gnupg.GPG()
+        dstfd, dst = tempfile.mkstemp()
+        #encrypted_data = gpg.encrypt(open('/etc/services', 'rb').read(), symmetric=True, passphrase=password, armor=True, recipients=['dummy@example.com'])
+        with open(src, 'rb') as fin:
+            decrypted_data = gpg.decrypt(fin.read(), passphrase=password)
+            with open(dst, 'wb') as fout:
+                if not decrypted_data.ok:
+                    raise ValueError(f'Error decrypting {src}')
+                fout.write(decrypted_data.data)
+
+        return dst
+
+
+    def do_config(self, **kv):
+        self.config.update(self.jinja_expand_dict(kv))
+
+    def do_copy(self, src: str, dst: str, skip: bool=False, decrypt_password: Union[None,str]=None):
+        env = { 'src': src, 'dst': dst }
+        src = self.jinja_expand_str(src, env)
+        if decrypt_password:
+            decrypt_password = self.jinja_expand_str(decrypt_password, env)
+            src = self.decrypt(src, decrypt_password)
+        dst = self.jinja_expand_str(dst, env)
+
+        print(f"copy({src}  {dst})")
+        if skip == "if_exists" and os.path.exists(dst):
+            print("Exists")
+            return
+
+        shutil.copy(src, dst)
+
+    def do_mkdir(self, path: str, skip: bool=False):
+        path = self.jinja_expand_str(path)
+        print(f"mkdir({path})")
+        if skip == "if_exists" and os.path.exists(path):
+            print("Exists")
+            return
+
+        os.makedirs(path)
+
+    def do_template(self, src: str, dst: str, skip:bool=False):
+        env = { 'src': src, 'dst': dst }
+        src = self.jinja_expand_str(src, env)
+        dst = self.jinja_expand_str(dst, env)
+
+        print(f"template({src}  {dst})")
+        if skip == "exists" and os.path.exists(dst):
+            print("Exists")
+            return
+
+        with open(src, 'r') as fin:
+            data = self.jinja_expand_str(fin.read(), env)
+        with open(dst, 'w') as fout:
+            fout.write(data)
+
+    def do_rm(self, path: str, recursive:bool=False):
+        path = self.jinja_expand_str(path)
+        if not os.path.exists(path):
+            return
+
+        if recursive and os.path.isdir(path):
+            shutil.rmtree(path)
+            return
+
+        os.remove(path)
+
+    def do_run(self, command: str):
+        command = self.jinja_expand_str(command)
+        sys.stdout.flush()
+        sys.stderr.flush()
+        subprocess.run(command, shell=True)
+
+
+if __name__ == "__main__":
+    runner = CommandProcessor()
+
+    data = yaml.safe_load(open(sys.argv[1], "r"))
+    for statement in data:
+        command = list(statement.keys())[0]
+        del(statement[command])
+        args = statement
+
+        attr = getattr(runner, f"do_{command}")
+        attr(**args)

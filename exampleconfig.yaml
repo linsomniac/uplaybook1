@@ -1,0 +1,24 @@
+- config:
+  destdir: /tmp/foo
+  gpg_password: foobar
+
+- rm:
+  path: "{{destdir}}"
+  recursive: true
+- run:
+  command: "ls -ld {{destdir}}"
+- mkdir:
+  path: "{{destdir}}"
+- copy:
+  src: foo.gpg
+  dst: "{{destdir}}/bar"
+  skip: if_exists
+  decrypt_password: "{{gpg_password}}"
+- template:
+  src: foo.j2
+  dst: "{{destdir}}/baz"
+  skip: if_exists
+#- move:
+#- chown:
+#- copytree:
+#- rmtree:
