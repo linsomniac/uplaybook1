@@ -8,13 +8,29 @@ import subprocess
 import tempfile
 import shutil
 import gnupg
-import oyaml as yaml
+import yaml
+from collections import OrderedDict
 from typing import Union
+
+def ordered_load(stream, Loader=yaml.SafeLoader, object_pairs_hook=OrderedDict):
+    '''Usage:
+    ordered_load(stream, yaml.SafeLoader)
+    From: https://stackoverflow.com/questions/5121931/in-python-how-can-you-load-yaml-mappings-as-ordereddicts
+    '''
+    class OrderedLoader(Loader):
+        pass
+    def construct_mapping(loader, node):
+        loader.flatten_mapping(node)
+        return object_pairs_hook(loader.construct_pairs(node))
+    OrderedLoader.add_constructor(
+        yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+        construct_mapping)
+    return yaml.load(stream, OrderedLoader)
 
 
 class CommandProcessor:
     def __init__(self):
-        self.config = {}
+        self.config = {'environ': os.environ}
 
     def jinja_expand_str(self, s: str, env: Union[None, dict] = None) -> str:
         env = self.config.copy()
@@ -109,7 +125,7 @@ class CommandProcessor:
 if __name__ == "__main__":
     runner = CommandProcessor()
 
-    data = yaml.safe_load(open(sys.argv[1], "r"))
+    data = ordered_load(open(sys.argv[1], "r"), yaml.SafeLoader)
     for statement in data:
         command = list(statement.keys())[0]
         del(statement[command])
