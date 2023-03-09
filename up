@@ -11,6 +11,10 @@ import gnupg
 import yaml
 from collections import OrderedDict
 from typing import Union
+import base64
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 
 def ordered_load(stream, Loader=yaml.SafeLoader, object_pairs_hook=OrderedDict):
@@ -30,6 +34,19 @@ def ordered_load(stream, Loader=yaml.SafeLoader, object_pairs_hook=OrderedDict):
         yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, construct_mapping
     )
     return yaml.load(stream, OrderedLoader)
+
+
+def fernet_decrypt(data: bytes, password: bytes) -> bytes:
+    salt = password
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=480000,
+    )
+    key = base64.urlsafe_b64encode(kdf.derive(password))
+    f = Fernet(key)
+    return f.decrypt(data)
 
 
 class CommandProcessor:
@@ -53,15 +70,11 @@ class CommandProcessor:
         return results
 
     def decrypt(self, src: str, password: str) -> str:
-        gpg = gnupg.GPG()
         dstfd, dst = tempfile.mkstemp()
-        # encrypted_data = gpg.encrypt(open('/etc/services', 'rb').read(), symmetric=True, passphrase=password, armor=True, recipients=['dummy@example.com'])
         with open(src, "rb") as fin:
-            decrypted_data = gpg.decrypt(fin.read(), passphrase=password)
+            decrypted_data = fernet_decrypt(fin.read(), password.encode('ascii'))
             with open(dst, "wb") as fout:
-                if not decrypted_data.ok:
-                    raise ValueError(f"Error decrypting {src}")
-                fout.write(decrypted_data.data)
+                fout.write(decrypted_data)
 
         return dst
 

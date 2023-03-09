@@ -1,6 +1,6 @@
 - config:
   destdir: /tmp/foo
-  gpg_password: foobar
+  password: foobar
 
 - rm:
   path: "{{destdir}}"
@@ -10,10 +10,10 @@
 - mkdir:
   path: "{{destdir}}"
 - copy:
-  src: foo.gpg
+  src: foo.fernet
   dst: "{{destdir}}/bar"
   skip: if_exists
-  decrypt_password: "{{gpg_password}}"
+  decrypt_password: "{{password}}"
 - template:
   src: foo.j2
   dst: "{{destdir}}/baz"
