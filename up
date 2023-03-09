@@ -12,25 +12,29 @@ import yaml
 from collections import OrderedDict
 from typing import Union
 
+
 def ordered_load(stream, Loader=yaml.SafeLoader, object_pairs_hook=OrderedDict):
-    '''Usage:
+    """Usage:
     ordered_load(stream, yaml.SafeLoader)
     From: https://stackoverflow.com/questions/5121931/in-python-how-can-you-load-yaml-mappings-as-ordereddicts
-    '''
+    """
+
     class OrderedLoader(Loader):
         pass
+
     def construct_mapping(loader, node):
         loader.flatten_mapping(node)
         return object_pairs_hook(loader.construct_pairs(node))
+
     OrderedLoader.add_constructor(
-        yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
-        construct_mapping)
+        yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, construct_mapping
+    )
     return yaml.load(stream, OrderedLoader)
 
 
 class CommandProcessor:
     def __init__(self):
-        self.config = {'environ': os.environ}
+        self.config = {"environ": os.environ}
 
     def jinja_expand_str(self, s: str, env: Union[None, dict] = None) -> str:
         env = self.config.copy()
@@ -51,22 +55,27 @@ class CommandProcessor:
     def decrypt(self, src: str, password: str) -> str:
         gpg = gnupg.GPG()
         dstfd, dst = tempfile.mkstemp()
-        #encrypted_data = gpg.encrypt(open('/etc/services', 'rb').read(), symmetric=True, passphrase=password, armor=True, recipients=['dummy@example.com'])
-        with open(src, 'rb') as fin:
+        # encrypted_data = gpg.encrypt(open('/etc/services', 'rb').read(), symmetric=True, passphrase=password, armor=True, recipients=['dummy@example.com'])
+        with open(src, "rb") as fin:
             decrypted_data = gpg.decrypt(fin.read(), passphrase=password)
-            with open(dst, 'wb') as fout:
+            with open(dst, "wb") as fout:
                 if not decrypted_data.ok:
-                    raise ValueError(f'Error decrypting {src}')
+                    raise ValueError(f"Error decrypting {src}")
                 fout.write(decrypted_data.data)
 
         return dst
 
-
     def do_config(self, **kv):
         self.config.update(self.jinja_expand_dict(kv))
 
-    def do_copy(self, src: str, dst: str, skip: bool=False, decrypt_password: Union[None,str]=None):
-        env = { 'src': src, 'dst': dst }
+    def do_copy(
+        self,
+        src: str,
+        dst: str,
+        skip: bool = False,
+        decrypt_password: Union[None, str] = None,
+    ):
+        env = {"src": src, "dst": dst}
         src = self.jinja_expand_str(src, env)
         if decrypt_password:
             decrypt_password = self.jinja_expand_str(decrypt_password, env)
@@ -80,7 +89,7 @@ class CommandProcessor:
 
         shutil.copy(src, dst)
 
-    def do_mkdir(self, path: str, skip: bool=False):
+    def do_mkdir(self, path: str, skip: bool = False):
         path = self.jinja_expand_str(path)
         print(f"mkdir({path})")
         if skip == "if_exists" and os.path.exists(path):
@@ -89,8 +98,8 @@ class CommandProcessor:
 
         os.makedirs(path)
 
-    def do_template(self, src: str, dst: str, skip:bool=False):
-        env = { 'src': src, 'dst': dst }
+    def do_template(self, src: str, dst: str, skip: bool = False):
+        env = {"src": src, "dst": dst}
         src = self.jinja_expand_str(src, env)
         dst = self.jinja_expand_str(dst, env)
 
@@ -99,13 +108,14 @@ class CommandProcessor:
             print("Exists")
             return
 
-        with open(src, 'r') as fin:
+        with open(src, "r") as fin:
             data = self.jinja_expand_str(fin.read(), env)
-        with open(dst, 'w') as fout:
+        with open(dst, "w") as fout:
             fout.write(data)
 
-    def do_rm(self, path: str, recursive:bool=False):
+    def do_rm(self, path: str, recursive: bool = False):
         path = self.jinja_expand_str(path)
+        print(f"rm({path})")
         if not os.path.exists(path):
             return
 
@@ -117,9 +127,15 @@ class CommandProcessor:
 
     def do_run(self, command: str):
         command = self.jinja_expand_str(command)
+        print(f"run({command})")
         sys.stdout.flush()
         sys.stderr.flush()
         subprocess.run(command, shell=True)
+
+    def do_cd(self, path: str):
+        path = self.jinja_expand_str(path)
+        print(f"cd({path})")
+        os.chdir(path)
 
 
 if __name__ == "__main__":
@@ -128,8 +144,12 @@ if __name__ == "__main__":
     data = ordered_load(open(sys.argv[1], "r"), yaml.SafeLoader)
     for statement in data:
         command = list(statement.keys())[0]
-        del(statement[command])
+        del statement[command]
         args = statement
 
-        attr = getattr(runner, f"do_{command}")
+        try:
+            attr = getattr(runner, f"do_{command}")
+        except AttributeError:
+            sys.stderr.write(f'ERROR: Unknown command "{command}"')
+            sys.exit(1)
         attr(**args)

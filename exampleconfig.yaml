@@ -18,6 +18,10 @@
   src: foo.j2
   dst: "{{destdir}}/baz"
   skip: if_exists
+- cd:
+  path: "{{destdir}}"
+- run:
+  command: "ls -ld"
 #- move:
 #- chown:
 #- copytree:
