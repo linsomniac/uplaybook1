@@ -42,7 +42,7 @@ def fernet_decrypt(data: bytes, password: bytes) -> bytes:
         algorithm=hashes.SHA256(),
         length=32,
         salt=salt,
-        iterations=480000,
+        iterations=960000,
     )
     key = base64.urlsafe_b64encode(kdf.derive(password))
     f = Fernet(key)
