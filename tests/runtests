@@ -1,0 +1,19 @@
+#!/bin/bash -eu
+#
+#  Tests for uPlaybook
+
+if [ -d .git ]; then
+  UP=$(pwd)/up
+  TESTDIR=$(pwd)/tests
+else
+  UP=$(pwd)/../up
+  TESTDIR=$(pwd)
+fi
+export UP
+export TESTDIR
+
+cd "$TESTDIR"
+for TEST in test_*; do
+  cd "$TESTDIR"/"$TEST"
+  ./run_test
+done

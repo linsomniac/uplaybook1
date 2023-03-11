@@ -1,0 +1,25 @@
+---
+- config:
+  dirname: "{{ environ['TESTDIR']}}"
+  filename: date_file
+
+- run:
+  command: "rm -rf data"
+- mkdir:
+  path: data
+- cd:
+  path: data
+- run:
+  command: "date >{{filename}}"
+- copy:
+  src: "{{filename}}"
+  dst: "{{filename}}.fernet"
+  encrypt_password: foobar
+- copy:
+  src: "{{filename}}.fernet"
+  dst: "{{filename}}2"
+  decrypt_password: foobar
+- run:
+  command: "diff {{filename}} {{filename}}2"
+
+#- template:

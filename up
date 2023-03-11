@@ -10,7 +10,7 @@ import shutil
 import gnupg
 import yaml
 from collections import OrderedDict
-from typing import Union
+from typing import Union, Tuple
 import base64
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
@@ -36,7 +36,7 @@ def ordered_load(stream, Loader=yaml.SafeLoader, object_pairs_hook=OrderedDict):
     return yaml.load(stream, OrderedLoader)
 
 
-def fernet_decrypt(data: bytes, password: bytes) -> bytes:
+def fernet_key(password: bytes) -> Fernet:
     salt = password
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
@@ -45,8 +45,19 @@ def fernet_decrypt(data: bytes, password: bytes) -> bytes:
         iterations=960000,
     )
     key = base64.urlsafe_b64encode(kdf.derive(password))
-    f = Fernet(key)
-    return f.decrypt(data)
+    return Fernet(key)
+
+
+def fernet_encrypt(filename: str, password: bytes) -> bytes:
+    f = fernet_key(password)
+    with open(filename, "rb") as fp:
+        return f.encrypt(fp.read())
+
+
+def fernet_decrypt(filename: str, password: bytes) -> bytes:
+    f = fernet_key(password)
+    with open(filename, "rb") as fp:
+        return f.decrypt(fp.read())
 
 
 class CommandProcessor:
@@ -69,14 +80,38 @@ class CommandProcessor:
 
         return results
 
-    def decrypt(self, src: str, password: str) -> str:
+    def encrypt(self, src: str, password: str) -> str:
         dstfd, dst = tempfile.mkstemp()
-        with open(src, "rb") as fin:
-            decrypted_data = fernet_decrypt(fin.read(), password.encode('ascii'))
-            with open(dst, "wb") as fout:
-                fout.write(decrypted_data)
+        encrypted_data = fernet_encrypt(src, password.encode("ascii"))
+        with open(dst, "wb") as fout:
+            fout.write(encrypted_data)
 
         return dst
+
+    def decrypt(self, src: str, password: str) -> str:
+        dstfd, dst = tempfile.mkstemp()
+        decrypted_data = fernet_decrypt(src, password.encode("ascii"))
+        with open(dst, "wb") as fout:
+            fout.write(decrypted_data)
+
+        return dst
+
+    def decrypt_or_decrypt_args(self,
+        src: str,
+        dst: str,
+        decrypt_password: Union[None, str],
+        encrypt_password: Union[None, str],
+        env: dict,
+    ) -> Tuple[str, str]:
+        if decrypt_password:
+            decrypt_password = self.jinja_expand_str(decrypt_password, env)
+            src = self.decrypt(src, decrypt_password)
+        if encrypt_password:
+            encrypt_password = self.jinja_expand_str(encrypt_password, env)
+            src = self.encrypt(src, encrypt_password)
+
+        return src, dst
+
 
     def do_config(self, **kv):
         self.config.update(self.jinja_expand_dict(kv))
@@ -87,13 +122,12 @@ class CommandProcessor:
         dst: str,
         skip: bool = False,
         decrypt_password: Union[None, str] = None,
+        encrypt_password: Union[None, str] = None,
     ):
         env = {"src": src, "dst": dst}
         src = self.jinja_expand_str(src, env)
-        if decrypt_password:
-            decrypt_password = self.jinja_expand_str(decrypt_password, env)
-            src = self.decrypt(src, decrypt_password)
         dst = self.jinja_expand_str(dst, env)
+        src, dst = self.decrypt_or_decrypt_args(src, dst, decrypt_password, encrypt_password, env)
 
         print(f"copy({src}  {dst})")
         if skip == "if_exists" and os.path.exists(dst):
@@ -102,19 +136,18 @@ class CommandProcessor:
 
         shutil.copy(src, dst)
 
-    def do_mkdir(self, path: str, skip: bool = False):
-        path = self.jinja_expand_str(path)
-        print(f"mkdir({path})")
-        if skip == "if_exists" and os.path.exists(path):
-            print("Exists")
-            return
-
-        os.makedirs(path)
-
-    def do_template(self, src: str, dst: str, skip: bool = False):
+    def do_template(
+        self,
+        src: str,
+        dst: str,
+        skip: bool = False,
+        decrypt_password: Union[None, str] = None,
+        encrypt_password: Union[None, str] = None,
+    ):
         env = {"src": src, "dst": dst}
         src = self.jinja_expand_str(src, env)
         dst = self.jinja_expand_str(dst, env)
+        src, dst = self.decrypt_or_decrypt_args(src, dst, decrypt_password, encrypt_password, env)
 
         print(f"template({src}  {dst})")
         if skip == "exists" and os.path.exists(dst):
@@ -125,6 +158,15 @@ class CommandProcessor:
             data = self.jinja_expand_str(fin.read(), env)
         with open(dst, "w") as fout:
             fout.write(data)
+
+    def do_mkdir(self, path: str, skip: bool = False):
+        path = self.jinja_expand_str(path)
+        print(f"mkdir({path})")
+        if skip == "if_exists" and os.path.exists(path):
+            print("Exists")
+            return
+
+        os.makedirs(path)
 
     def do_rm(self, path: str, recursive: bool = False):
         path = self.jinja_expand_str(path)
