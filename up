@@ -7,7 +7,6 @@ import jinja2
 import subprocess
 import tempfile
 import shutil
-import gnupg
 import yaml
 from collections import OrderedDict
 from typing import Union, Tuple
