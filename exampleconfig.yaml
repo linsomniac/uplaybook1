@@ -1,5 +1,6 @@
 - config:
-  destdir: /tmp/foo
+  suffix: "{{environ['EXAMPLE_SUFFIX'] | default('')}}"
+  destdir: "/tmp/foo{{suffix}}"
   password: foobar
 
 - rm:
@@ -16,13 +17,13 @@
   decrypt_password: "{{password}}"
 - template:
   src: foo.j2
-  dst: "{{destdir}}/baz"
+  dst: "{{destdir}}/foo-templated"
   skip: if_exists
 - cd:
   path: "{{destdir}}"
 - run:
   command: "ls -ld"
+
 #- move:
 #- chown:
 #- copytree:
-#- rmtree:
