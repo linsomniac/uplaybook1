@@ -112,8 +112,11 @@ class CommandProcessor:
         return src, dst
 
 
-    def do_config(self, **kv):
+    def do_vars(self, **kv):
         self.config.update(self.jinja_expand_dict(kv))
+
+    #  deprecated: Renamed "config" to "vars"
+    do_config = do_vars
 
     def do_copy(
         self,

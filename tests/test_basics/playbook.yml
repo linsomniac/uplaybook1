@@ -1,5 +1,5 @@
 ---
-- config:
+- vars:
   dirname: "{{ environ['TESTDIR']}}"
   filename: date_file
 

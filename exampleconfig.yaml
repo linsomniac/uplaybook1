@@ -1,4 +1,4 @@
-- config:
+- vars:
   suffix: "{{environ['EXAMPLE_SUFFIX'] | default('')}}"
   destdir: "/tmp/foo{{suffix}}"
   password: foobar
