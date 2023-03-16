@@ -36,11 +36,10 @@ def ordered_load(stream, Loader=yaml.SafeLoader, object_pairs_hook=OrderedDict):
 
 
 def fernet_key(password: bytes) -> Fernet:
-    salt = password
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
-        salt=salt,
+        salt=b'',
         iterations=960000,
     )
     key = base64.urlsafe_b64encode(kdf.derive(password))

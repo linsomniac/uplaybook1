@@ -13,11 +13,10 @@ if len(sys.argv) != 4:
     sys.exit(1)
 
 password = sys.argv[1].encode("ascii")
-salt = password
 kdf = PBKDF2HMAC(
     algorithm=hashes.SHA256(),
     length=32,
-    salt=salt,
+    salt=b'',
     iterations=960000,
 )
 key = base64.urlsafe_b64encode(kdf.derive(password))
