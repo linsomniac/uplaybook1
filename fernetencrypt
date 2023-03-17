@@ -3,6 +3,7 @@
 #  Encrypt a file using a password.
 
 import sys
+import os
 import base64
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
@@ -12,11 +13,12 @@ if len(sys.argv) != 4:
     print(f"Usage: {sys.argv[0]} <PASSWORD> <IN-FILE> <OUT-FILE>")
     sys.exit(1)
 
+salt = os.urandom(16)
 password = sys.argv[1].encode("ascii")
 kdf = PBKDF2HMAC(
     algorithm=hashes.SHA256(),
     length=32,
-    salt=b'',
+    salt=salt,
     iterations=960000,
 )
 key = base64.urlsafe_b64encode(kdf.derive(password))
@@ -25,4 +27,5 @@ f = Fernet(key)
 with open(sys.argv[2], "rb") as infp:
     data = f.encrypt(infp.read())
     with open(sys.argv[3], "wb") as outfp:
+        outfp.write(salt)
         outfp.write(data)

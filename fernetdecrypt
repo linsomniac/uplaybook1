@@ -12,17 +12,20 @@ if len(sys.argv) != 4:
     print(f"Usage: {sys.argv[0]} <PASSWORD> <IN-FILE> <OUT-FILE>")
     sys.exit(1)
 
-password = sys.argv[1].encode("ascii")
-kdf = PBKDF2HMAC(
-    algorithm=hashes.SHA256(),
-    length=32,
-    salt=b'',
-    iterations=960000,
-)
-key = base64.urlsafe_b64encode(kdf.derive(password))
-f = Fernet(key)
 
 with open(sys.argv[2], "rb") as infp:
+    salt = infp.read(16)
+
+    password = sys.argv[1].encode("ascii")
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=960000,
+    )
+    key = base64.urlsafe_b64encode(kdf.derive(password))
+    f = Fernet(key)
+
     data = f.decrypt(infp.read())
     with open(sys.argv[3], "wb") as outfp:
         outfp.write(data)

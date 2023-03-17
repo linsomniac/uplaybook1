@@ -35,11 +35,15 @@ def ordered_load(stream, Loader=yaml.SafeLoader, object_pairs_hook=OrderedDict):
     return yaml.load(stream, OrderedLoader)
 
 
-def fernet_key(password: bytes) -> Fernet:
+def generate_salt() -> bytes:
+    return os.urandom(16)
+
+
+def fernet_key(password: bytes, salt: bytes) -> Fernet:
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
-        salt=b'',
+        salt=salt,
         iterations=960000,
     )
     key = base64.urlsafe_b64encode(kdf.derive(password))
@@ -47,14 +51,16 @@ def fernet_key(password: bytes) -> Fernet:
 
 
 def fernet_encrypt(filename: str, password: bytes) -> bytes:
-    f = fernet_key(password)
+    salt = generate_salt()
+    f = fernet_key(password, salt)
     with open(filename, "rb") as fp:
-        return f.encrypt(fp.read())
+        return salt + f.encrypt(fp.read())
 
 
 def fernet_decrypt(filename: str, password: bytes) -> bytes:
-    f = fernet_key(password)
     with open(filename, "rb") as fp:
+        salt = fp.read(16)
+        f = fernet_key(password, salt)
         return f.decrypt(fp.read())
 
 
