@@ -202,6 +202,17 @@ Example:
       foo: "{{key}}"
       path: "{{environ['PATH']}}"
 
+## Fernet Encryption
+
+The Fernet encryption used here was chosen because it is implemented directly in the
+Python cryptography module, and implements best practices for encryption.  I had
+wanted to use the gnupg module but that relies on the "gpg" command-line tool which
+was tricky under Windows.
+
+The Fernet files are formatted as 16 raw bytes of salt, randomly chosen, and then the
+encrypted data as produced by the Fernet routines. [More information on
+Fernet](https://cryptography.io/en/latest/fernet/ "Python Cryptography Fernet Module").
+
 ## License
 
 CC0 1.0 Universal, see LICENSE file for more information.
