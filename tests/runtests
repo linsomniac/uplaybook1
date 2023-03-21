@@ -23,3 +23,7 @@ for TEST in test_*; do
     exit 1
   fi
 done
+
+cd "$TESTDIR"
+python3 -m pytest
+exit "$?"

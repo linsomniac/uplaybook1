@@ -12,7 +12,7 @@ more difficult to provide via a Powershell script.
 - Templating (jinja2) of files, paths, and configuration values.
 - Built in encryption/decryption (Fernet, via Python cryptography module)
 - Ansible-inspired yaml configuration.
-- Can template from the environment.
+- Environment variables are brought into template namepsace.
 - Helpers for fernet encrypt/decrypt.
 
 ## Requirements
@@ -24,42 +24,61 @@ For example, on Ubuntu: apt install python3 python3-cryptography python3-yaml py
 
 ## Examples
 
-Given a "exampleconfig.yaml" that looks like this:
+Given a "exampleplaybook.yaml" that looks like this:
 
+    ---
+    #  Most values below can use jinja2 templating syntax
     - vars:
+      #  pull the suffix from the environment $EXAMPLE_SUFFIX, or empty string if not set
       suffix: "{{environ['EXAMPLE_SUFFIX'] | default('')}}"
       destdir: "/tmp/foo{{suffix}}"
       password: foobar
     
+    #  Remove directory
     - rm:
       path: "{{destdir}}"
       recursive: true
+    #  List directory
     - run:
       command: "ls -ld {{destdir}}"
+    #  Create directory
     - mkdir:
       path: "{{destdir}}"
+      skip: if_exists
+    #  Make multiple directories via "loop"
+    - mkdir:
+      loop:
+        - path: "{{destdir}}/a"
+        - path: "{{destdir}}/b"
+        - path: "{{destdir}}/c"
+    #  Copy an encrypted file
     - copy:
       src: foo.fernet
       dst: "{{destdir}}/bar"
       skip: if_exists
       decrypt_password: "{{password}}"
+    #  Template a file to destination
     - template:
       src: foo.j2
       dst: "{{destdir}}/foo-templated"
       skip: if_exists
+    #  Change to directory
     - cd:
       path: "{{destdir}}"
     - run:
       command: "ls -ld"
-
+    
 You can run the test by first encrypting a file:
 
-    date >foo
-    ./fernetencrypt foobar foo foo.fernet
+    date >foo.j2
+    ./fernetencrypt foobar foo.j2 foo.fernet
 
 Then run "up":
 
-    up exampleconfig.yaml
+    up exampleplaybook.yaml
+
+NOTE: The example playbook includes references to several templates that are not
+created above, so it will error out if they do not exist.
 
 ## Loops
 
@@ -71,7 +90,7 @@ loop, or provide other keys that can be used by templated values.
 For example:
 
     - template:
-      src: "{{ dst|basename + '.j2' }}"
+      src: "{{ dst|basename }}.j2"
       loop:
         - dst: /etc/services
         - dst: /etc/hosts
