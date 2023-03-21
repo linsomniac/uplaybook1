@@ -9,7 +9,7 @@ import tempfile
 import shutil
 import yaml
 from collections import OrderedDict
-from typing import Union, Tuple
+from typing import Union, Tuple, List
 import base64
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
@@ -33,6 +33,38 @@ def ordered_load(stream, Loader=yaml.SafeLoader, object_pairs_hook=OrderedDict):
         yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, construct_mapping
     )
     return yaml.load(stream, OrderedLoader)
+
+
+def unroll_loops(lst: List[OrderedDict]) -> List[OrderedDict]:
+    """
+    Unroll dictionaries containing a "loop" key with a list of dictionaries as its value.
+
+    This function iterates through a list of dictionaries, and if an item
+    has a "loop" key, it replaces the item with one item for each of the
+    elements in the "loop" value list.  The new items are created by merging
+    the outer dictionary with each inner dictionary, overwriting any keys
+    in the outer dictionary with the values from the inner dictionary.
+
+    Args:
+        lst (List[OrderedDict]): A list of dictionaries, with some dictionaries
+                potentially containing a "loop" key and a list of dictionaries as
+                its value.
+
+    Returns:
+        List[OrderedDict]: A new list of dictionaries with the "loop" items unrolled.
+    """
+    result = []
+    for task in lst:
+        if "loop" in task:
+            for item in task["loop"]:
+                merged = OrderedDict()
+                merged.update(task)
+                merged.update(item)
+                del merged["loop"]
+                result.append(merged)
+        else:
+            result.append(task)
+    return result
 
 
 def generate_salt() -> bytes:
@@ -68,17 +100,23 @@ class CommandProcessor:
     def __init__(self):
         self.config = {"environ": os.environ}
 
-    def jinja_expand_str(self, s: str, env: Union[None, dict] = None) -> str:
+        self.jinja_env = jinja2.Environment()
+        self.jinja_env.filters['basename'] = os.path.basename
+        self.jinja_env.filters['dirname'] = os.path.dirname
+        self.jinja_env.filters['abspath'] = os.path.abspath
+
+    def jinja_expand_str(self, s: str, env_in: Union[None, dict] = None) -> str:
         env = self.config.copy()
-        if env != None:
-            env.update(env)
-        return jinja2.Template(s).render(env)
+        if env_in != None:
+            env.update(env_in)
+        return self.jinja_env.from_string(s).render(env)
 
     def jinja_expand_dict(self, d: dict) -> dict:
         env = self.config.copy()
+        env.update(d)
         results = {}
         for k, v in d.items():
-            newv = jinja2.Template(v).render(env)
+            newv = self.jinja_env.from_string(v).render(env)
             env[k] = newv
             results[k] = newv
 
@@ -100,7 +138,8 @@ class CommandProcessor:
 
         return dst
 
-    def decrypt_or_decrypt_args(self,
+    def decrypt_or_decrypt_args(
+        self,
         src: str,
         dst: str,
         decrypt_password: Union[None, str],
@@ -115,7 +154,6 @@ class CommandProcessor:
             src = self.encrypt(src, encrypt_password)
 
         return src, dst
-
 
     def do_vars(self, **kv):
         self.config.update(self.jinja_expand_dict(kv))
@@ -134,7 +172,9 @@ class CommandProcessor:
         env = {"src": src, "dst": dst}
         src = self.jinja_expand_str(src, env)
         dst = self.jinja_expand_str(dst, env)
-        src, dst = self.decrypt_or_decrypt_args(src, dst, decrypt_password, encrypt_password, env)
+        src, dst = self.decrypt_or_decrypt_args(
+            src, dst, decrypt_password, encrypt_password, env
+        )
 
         print(f"copy({src}  {dst})")
         if skip == "if_exists" and os.path.exists(dst):
@@ -154,7 +194,9 @@ class CommandProcessor:
         env = {"src": src, "dst": dst}
         src = self.jinja_expand_str(src, env)
         dst = self.jinja_expand_str(dst, env)
-        src, dst = self.decrypt_or_decrypt_args(src, dst, decrypt_password, encrypt_password, env)
+        src, dst = self.decrypt_or_decrypt_args(
+            src, dst, decrypt_password, encrypt_password, env
+        )
 
         print(f"template({src}  {dst})")
         if skip == "exists" and os.path.exists(dst):
@@ -204,6 +246,7 @@ if __name__ == "__main__":
     runner = CommandProcessor()
 
     data = ordered_load(open(sys.argv[1], "r"), yaml.SafeLoader)
+    data = unroll_loops(data)
     for statement in data:
         command = list(statement.keys())[0]
         del statement[command]

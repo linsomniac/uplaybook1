@@ -61,7 +61,33 @@ Then run "up":
 
     up exampleconfig.yaml
 
-## Modules
+## Loops
+
+uPlaybook supports looping, somewhat similar to Ansible.  However, the keys in the
+loop are directly loaded into the task, overriding any same-named task arguments.  In
+other words, you can specify defaults in the main play, and override them in the
+loop, or provide other keys that can be used by templated values.
+
+For example:
+
+    - template:
+      src: "{{ dst|basename + '.j2' }}"
+      loop:
+        - dst: /etc/services
+        - dst: /etc/hosts
+        - dst: /etc/shadow
+          decrypt_password: supersecret
+        - dst: /etc/systemd/system/myservice.service
+          src: systemd.conf.j2
+
+The above:
+
+- Makes the default "src" file be the basename of the destination ("services" in the
+  first line) with ".j2" appended: "services.j2".
+- The shadow entry is decrypted.
+- The systemd entry specifies a different source location.
+
+## Available Tasks
 
 ### cd
 
@@ -179,3 +205,6 @@ Example:
 ## License
 
 CC0 1.0 Universal, see LICENSE file for more information.
+
+<!-- vim: ts=4 sw=4 ai et tw=85
+-->

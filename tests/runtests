@@ -14,6 +14,12 @@ export TESTDIR
 
 cd "$TESTDIR"
 for TEST in test_*; do
+  cd "$TESTDIR"
+  [ ! -f "$TEST"/run_test ] && continue
   cd "$TESTDIR"/"$TEST"
-  ./run_test
+  echo "*** $TEST ***"
+  if ! ./run_test; then
+    echo "!!! TEST FAILED"
+    exit 1
+  fi
 done

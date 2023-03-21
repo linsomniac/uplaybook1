@@ -1,0 +1,6 @@
+#!/bin/bash -eu
+#
+#  Test the basics
+
+"$UP" playbook.yml
+exit $?

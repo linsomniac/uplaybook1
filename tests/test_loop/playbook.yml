@@ -1,0 +1,17 @@
+---
+- run:
+  command: "rm -rf data"
+- mkdir:
+  path: data
+- copy:
+  src: "{{dst|basename}}.j2"
+  loop:
+    - dst: "data/file1"
+    - dst: "data/file2"
+      src: file1.j2
+    - dst: "data/file3"
+      src: file1.j2
+- run:
+  command: "ls -l data"
+#- run:
+#  command: "diff {{filename}} {{filename}}2"
