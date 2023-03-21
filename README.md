@@ -3,9 +3,15 @@
 This is an extremely small, yaml-driven tool for doing simple file deployment and
 templating sorts of tasks.  It only requires Python and a couple of libraries.
 
-I implemented it primarily to deploy encrypted secrets and files, including templating,
-to a group of Windows machines.  In particular, the templating and encryption are
-more difficult to provide via a Powershell script.
+I implemented it primarily to deploy encrypted secrets and config files to a group
+of Windows machines.  Python was available but Ansible failed to run.
+
+While uPlaybook provides many shell-like commands ("tasks" in uPlaybook), it has the
+benefit of a rich templating language to manipulate placed files, and can also
+decrypt files that contain secrets.
+
+My initial use case was much like what Ansible solves: a way to deploy control and
+configuration files, including passwords and ssh keys, during new machine deployment.
 
 ## Features
 
@@ -21,6 +27,10 @@ more difficult to provide via a Powershell script.
 - Python libraries: cryptography, jinja2, pyyaml
 
 For example, on Ubuntu: apt install python3 python3-cryptography python3-yaml python3-jinja2
+
+## Why uPlaybook vs. Shell
+
+
 
 ## Examples
 
