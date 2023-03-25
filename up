@@ -15,29 +15,66 @@ from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from pathlib import Path
+from itertools import product
+
+
+def filter_only_exists(lst: List[Path]) -> List[Path]:
+    """
+    Filters a list of Path objects and returns a new list containing only the existing paths.
+
+    This function takes a list of Path objects and checks if each path exists. It returns a new list containing only the paths that exist.
+
+    Args:
+    lst (List[Path]): A list of Path objects to be filtered.
+
+    Returns:
+    List[Path]: A new list containing only the existing paths from the input list."""
+    return [x for x in lst if x.exists()]
 
 
 def find_playbook(playbookname: str) -> Path:
-    search_path = ".:.uplaybooks:~/.config/uplaybook/books:~/.config/uplaybook"
-    env_path = os.environ.get("UP_PLAYBOOK_PATH")
-    if env_path is not None:
-        search_path = env_path
+    """
+    Finds and returns the path of a specified playbook file.
 
-    for dr in [Path(x).expanduser() for x in search_path.split(":")]:
-        for test in [dr.joinpath(playbookname + ext) for ext in ["", ".yaml", ".yml"]]:
-            if test.exists():
-                if test.is_dir():
-                    for t2 in [
-                        test.joinpath(x)
-                        for x in ["playbook.yaml", "playbook.yml", "playbook"]
-                    ]:
-                        if t2.exists():
-                            return t2
-                return test
+    Searches for a playbook file with the given name in predefined directories
+    and with specific extensions (.yaml, .yml, or no extension). If the file is
+    inside a directory, it searches for 'playbook' files with the same extensions
+    within. The UP_PLAYBOOK_PATH environment variable can be used to set a custom
+    search path.
+
+    Args:
+    playbookname (str): The name of the playbook file to search for.
+
+    Returns:
+    Path: The path of the found playbook file.
+
+    Raises:
+    FileNotFoundError: If the playbook file is not found in the search paths."""
+
+    search_path = os.environ.get(
+        "UP_PLAYBOOK_PATH",
+        ".:.uplaybooks:~/.config/uplaybook/books:~/.config/uplaybook",
+    )
+    search_directories = [Path(x).expanduser() for x in search_path.split(":")]
+    extensions = ["", ".yaml", ".yml"]
+    pbdir_files = ["playbook.yaml", "playbook.yml", "playbook"]
+
+    paths_and_playbook_combinations = [
+            x[0].joinpath(playbookname + x[1])
+            for x in product(search_directories, extensions)
+        ]
+
+    for playbook in filter_only_exists(paths_and_playbook_combinations):
+        if not playbook.is_dir():
+            return playbook
+
+        pbdir_combinations = [playbook.joinpath(x) for x in pbdir_files]
+        for pbdir in filter_only_exists(pbdir_combinations):
+            return pbdir
 
     raise FileNotFoundError(
         f"Unable to locate a playbook by the name of {playbookname},"
-        " searched in path {search_path}"
+        f" searched in path {search_path}"
     )
 
 
