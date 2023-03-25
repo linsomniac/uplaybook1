@@ -28,10 +28,6 @@ configuration files, including passwords and ssh keys, during new machine deploy
 
 For example, on Ubuntu: apt install python3 python3-cryptography python3-yaml python3-jinja2
 
-## Why uPlaybook vs. Shell
-
-
-
 ## Examples
 
 Given a "exampleplaybook.yaml" that looks like this:
@@ -115,6 +111,31 @@ The above:
   first line) with ".j2" appended: "services.j2".
 - The shadow entry is decrypted.
 - The systemd entry specifies a different source location.
+
+## Playbook Search Path
+
+Running "up foo" will search for a playbook via a number of rules, and using a
+search path, which can be specified by the "UP\_PLAYBOOK\_PATH" environment variable.
+The default is: ".:.uplaybooks:~/.config/uplaybook/books:~/.config/uplaybook"
+Each component of the path is separated by a colon.
+
+The goal is to allow easy access to playbooks for use in a directory (think like a
+Makefile), or for tasks you do regularly.
+
+Playbooks can be either a file, or a directory with with a "playbook" file within it.
+
+Each directory in the search path is checked for a playbook with the following rules:
+
+- ~ is expanded to your home directory.
+- A file is looked for in the directory as:
+  - The exact file name ("foo").
+  - With ".yaml" appended to the name ("foo.yaml").
+  - With ".yml" appended to the name ("foo.yml").
+- If the playbook name is found as a directory, it matches as a playbook if it
+  contains a file named:
+  - playbook
+  - playbook.yaml
+  - playbook.yml
 
 ## Available Tasks
 

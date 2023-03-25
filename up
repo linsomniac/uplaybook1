@@ -14,6 +14,31 @@ import base64
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from pathlib import Path
+
+
+def find_playbook(playbookname: str) -> Path:
+    search_path = ".:.uplaybooks:~/.config/uplaybook/books:~/.config/uplaybook"
+    env_path = os.environ.get("UP_PLAYBOOK_PATH")
+    if env_path is not None:
+        search_path = env_path
+
+    for dr in [Path(x).expanduser() for x in search_path.split(":")]:
+        for test in [dr.joinpath(playbookname + ext) for ext in ["", ".yaml", ".yml"]]:
+            if test.exists():
+                if test.is_dir():
+                    for t2 in [
+                        test.joinpath(x)
+                        for x in ["playbook.yaml", "playbook.yml", "playbook"]
+                    ]:
+                        if t2.exists():
+                            return t2
+                return test
+
+    raise FileNotFoundError(
+        f"Unable to locate a playbook by the name of {playbookname},"
+        " searched in path {search_path}"
+    )
 
 
 def ordered_load(stream, Loader=yaml.SafeLoader, object_pairs_hook=OrderedDict):
@@ -101,9 +126,9 @@ class CommandProcessor:
         self.config = {"environ": os.environ}
 
         self.jinja_env = jinja2.Environment()
-        self.jinja_env.filters['basename'] = os.path.basename
-        self.jinja_env.filters['dirname'] = os.path.dirname
-        self.jinja_env.filters['abspath'] = os.path.abspath
+        self.jinja_env.filters["basename"] = os.path.basename
+        self.jinja_env.filters["dirname"] = os.path.dirname
+        self.jinja_env.filters["abspath"] = os.path.abspath
 
     def jinja_expand_str(self, s: str, env_in: Union[None, dict] = None) -> str:
         env = self.config.copy()
@@ -116,6 +141,10 @@ class CommandProcessor:
         env.update(d)
         results = {}
         for k, v in d.items():
+            if type(v) is not type(str):
+                results[k] = v
+                env[k] = str(v)
+                continue
             newv = self.jinja_env.from_string(v).render(env)
             env[k] = newv
             results[k] = newv
@@ -245,7 +274,9 @@ class CommandProcessor:
 if __name__ == "__main__":
     runner = CommandProcessor()
 
-    data = ordered_load(open(sys.argv[1], "r"), yaml.SafeLoader)
+    playbook_file = find_playbook(sys.argv[1])
+
+    data = ordered_load(open(playbook_file, "r"), yaml.SafeLoader)
     data = unroll_loops(data)
     for statement in data:
         command = list(statement.keys())[0]

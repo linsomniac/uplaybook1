@@ -1,0 +1,12 @@
+#!/bin/bash -eu
+#
+#  Test the playbook path searching
+
+"$UP" filebare
+"$UP" fileyaml
+"$UP" fileyaml.yaml
+"$UP" fileyml
+"$UP" fileyml.yml
+"$UP" dir
+UP_PLAYBOOK_PATH=subdir "$UP" sdir
+exit $?
