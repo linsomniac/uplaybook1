@@ -18,20 +18,6 @@ from pathlib import Path
 from itertools import product
 
 
-def filter_only_exists(lst: List[Path]) -> List[Path]:
-    """
-    Filters a list of Path objects and returns a new list containing only the existing paths.
-
-    This function takes a list of Path objects and checks if each path exists. It returns a new list containing only the paths that exist.
-
-    Args:
-    lst (List[Path]): A list of Path objects to be filtered.
-
-    Returns:
-    List[Path]: A new list containing only the existing paths from the input list."""
-    return [x for x in lst if x.exists()]
-
-
 def find_playbook(playbookname: str) -> Path:
     """
     Finds and returns the path of a specified playbook file.
@@ -55,22 +41,23 @@ def find_playbook(playbookname: str) -> Path:
         "UP_PLAYBOOK_PATH",
         ".:.uplaybooks:~/.config/uplaybook/books:~/.config/uplaybook",
     )
-    search_directories = [Path(x).expanduser() for x in search_path.split(":")]
-    extensions = ["", ".yaml", ".yml"]
+    search_path = [Path(x).expanduser().joinpath(playbookname) for x in search_path.split(":")]
     pbdir_files = ["playbook.yaml", "playbook.yml", "playbook"]
 
-    paths_and_playbook_combinations = [
-        x[0].joinpath(playbookname + x[1])
-        for x in product(search_directories, extensions)
-    ]
+    for pb_name in search_path:
+        if pb_name.is_dir():
+            for pbdir_file in [pb_name.joinpath(x) for x in pbdir_files]:
+                if pbdir_file.exists():
+                    return pbdir_file
+            continue
 
-    for playbook in filter_only_exists(paths_and_playbook_combinations):
-        if not playbook.is_dir():
-            return playbook
+        if pb_name.exists():
+            return pb_name
 
-        pbdir_combinations = [playbook.joinpath(x) for x in pbdir_files]
-        for pbdir in filter_only_exists(pbdir_combinations):
-            return pbdir
+        pb_with_extensions = [pb_name.parent.joinpath(pb_name.stem + x) for x in ('.yaml', '.yml')]
+        for pb_with_ext in pb_with_extensions:
+            if pb_with_ext.exists():
+                return pb_with_ext
 
     raise FileNotFoundError(
         f"Unable to locate a playbook by the name of {playbookname},"
