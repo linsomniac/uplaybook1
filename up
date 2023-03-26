@@ -159,19 +159,60 @@ def fernet_decrypt(filename: str, password: bytes) -> bytes:
 
 
 class CommandProcessor:
-    def __init__(self):
+    def __init__(self, template_dir: Path):
         self.config = {"environ": os.environ}
 
         self.jinja_env = jinja2.Environment()
         self.jinja_env.filters["basename"] = os.path.basename
         self.jinja_env.filters["dirname"] = os.path.dirname
         self.jinja_env.filters["abspath"] = os.path.abspath
+        self.template_dir = template_dir
 
     def jinja_expand_str(self, s: str, env_in: Union[None, dict] = None) -> str:
         env = self.config.copy()
         if env_in != None:
             env.update(env_in)
         return self.jinja_env.from_string(s).render(env)
+
+    def find_template(self, template_file: str) -> Path:
+        """
+        Finds and returns the path of a template file.
+
+        This function uses a colon-separated search path, either gotten from the
+        UP_TEMPLATE_PATH environment variable or the default.  "." specified in
+        the search path is relative to the directory the playbook is found in.
+
+        Returns:
+        Path: The path of the found template file.
+
+        Raises:
+        FileNotFoundError: If the template file is not found in the search paths.
+        """
+        search_path = os.environ.get(
+            "UP_TEMPLATE_PATH",
+            ".:./templates"
+        )
+
+        print(f'PATH: {search_path}')
+        for directory in search_path.split(':'):
+            print(f'DIRECTORY: {directory}')
+            if directory == '.':
+                p = self.template_dir.joinpath(template_file)
+                if p.exists():
+                    return p
+                continue
+            if directory.startswith('./'):
+                p = self.template_dir.joinpath(directory[2:]).joinpath(template_file)
+                if p.exists():
+                    return p
+                continue
+
+            p = Path(directory).joinpath(template_file)
+            if p.exists():
+                return p
+
+        raise FileNotFoundError(f'Could not find template {template_file}, searched in {search_path}')
+
 
     def jinja_expand_dict(self, d: dict) -> dict:
         env = self.config.copy()
@@ -251,7 +292,7 @@ class CommandProcessor:
 
     def do_template(
         self,
-        src: str,
+        src: Union[str, Path],
         dst: str,
         skip: bool = False,
         decrypt_password: Union[None, str] = None,
@@ -269,10 +310,33 @@ class CommandProcessor:
             print("Exists")
             return
 
+        if '/' not in src:
+            src = self.find_template(src)
+
         with open(src, "r") as fin:
             data = self.jinja_expand_str(fin.read(), env)
         with open(dst, "w") as fout:
             fout.write(data)
+
+    def do_mkdir(self, path: str, skip: bool = False):
+        path = self.jinja_expand_str(path)
+        print(f"mkdir({path})")
+        if skip == "if_exists" and os.path.exists(path):
+            print("Exists")
+            return
+
+        os.makedirs(path)
+
+    def do_rm(self, path: str, recursive: bool = False):
+        path = self.jinja_expand_str(path)
+        print(f"rm({path})")
+        if not os.path.exists(path):
+            return
+
+        if recursive and os.path.isdir(path):
+            shutil.rmtree(path)
+            return
+
 
     def do_mkdir(self, path: str, skip: bool = False):
         path = self.jinja_expand_str(path)
@@ -309,12 +373,11 @@ class CommandProcessor:
 
 
 if __name__ == "__main__":
-    runner = CommandProcessor()
-
     playbook_file = find_playbook(sys.argv[1])
 
     data = ordered_load(open(playbook_file, "r"), yaml.SafeLoader)
     data = unroll_loops(data)
+    runner = CommandProcessor(playbook_file.parent)
     for statement in data:
         command = list(statement.keys())[0]
         del statement[command]

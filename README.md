@@ -137,6 +137,17 @@ Each directory in the search path is checked for a playbook with the following r
   - playbook.yaml
   - playbook.yml
 
+## Template Search Path
+
+Template files are searched for in a colon-separated path, either gotten from the
+UP\_TEMPLATE\_PATH or the default of ".:./templates".  A "." in the template path is
+relative to the directory that contains the playbook file.
+
+The default search path looks for template files in:
+
+- The same directory as the playbook
+- In a subdirectory (by the playbook) named "templates".
+
 ## Available Tasks
 
 ### cd
