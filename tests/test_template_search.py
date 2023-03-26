@@ -93,7 +93,8 @@ class TestTemplateSearch(unittest.TestCase):
         os.environ['UP_FILES_PATH'] = '.'
         cmd = up.CommandProcessor(self.test_dir.joinpath('playbook.yml').parent)
         assert cmd.find_file('topdir.j2') == self.test_dir.joinpath('topdir.j2')
-        assert cmd.find_file('subdir.j2') == self.test_dir.joinpath('files').joinpath('subdir.j2')
+        with self.assertRaises(FileNotFoundError):
+            assert cmd.find_file('subdir.j2') == self.test_dir.joinpath('files').joinpath('subdir.j2')
 
     def test_template_search_env2(self):
         os.environ['UP_FILES_PATH'] = './foo'
