@@ -114,28 +114,22 @@ The above:
 
 ## Playbook Search Path
 
-Running "up foo" will search for a playbook via a number of rules, and using a
-search path, which can be specified by the "UP\_PLAYBOOK\_PATH" environment variable.
-The default is: ".:.uplaybooks:~/.config/uplaybook/books:~/.config/uplaybook"
-Each component of the path is separated by a colon.
+The playbook will be searched for using a search path, which can be specified
+by the "UP\_PLAYBOOK\_PATH" environment variable.  The default search path is:
+".:.uplaybooks:~/.config/uplaybook/books:~/.config/uplaybook" Each component of
+the path is separated by a colon.
 
-The goal is to allow easy access to playbooks for use in a directory (think like a
-Makefile), or for tasks you do regularly.
+There are two types of playbooks: a file and a package.  A file playbook is
+simply a YAML file which specifies the play.  A package is a directory with a
+file "up.yml" inside it.  Files are better for simple, self-contained plays,
+where a package can bundle up templates and other files into a single location.
 
-Playbooks can be either a file, or a directory with with a "playbook" file within it.
+To find a playbook "foo", each directory in the search path is consulted, looking for:
 
-Each directory in the search path is checked for a playbook with the following rules:
-
-- ~ is expanded to your home directory.
-- A file is looked for in the directory as:
-  - The exact file name ("foo").
-  - With ".yaml" appended to the name ("foo.yaml").
-  - With ".yml" appended to the name ("foo.yml").
-- If the playbook name is found as a directory, it matches as a playbook if it
-  contains a file named:
-  - playbook
-  - playbook.yaml
-  - playbook.yml
+- User expansion is done if "~" or "~user" are in the path.
+- "foo" as a drectory with a "up.yml" file in it.
+- "foo" is a file.
+- "foo.yml" is a file.
 
 ## File and Template Search Path
 

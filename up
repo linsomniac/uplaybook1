@@ -46,12 +46,9 @@ def find_playbook(playbookname: str) -> Path:
 
     def playbook_combinations(paths: List[Path]) -> Iterator[Path]:
         for pb in paths:
-            yield pb.joinpath("playbook.yaml")  #  pb/playbook.yaml
-            yield pb.joinpath("playbook.yml")  #  pb/playbook.yml
-            yield pb.joinpath("playbook")  #  pb/playbook
+            yield pb.joinpath("up.yml")  #  pb/up.yml
             yield pb  #  pb
-            yield pb.parent.joinpath(pb.stem + ".yaml")  #  pb.yaml
-            yield pb.parent.joinpath(pb.stem + ".yml")  #  pb.yml
+            yield pb.parent.joinpath(pb.name + ".yml")  #  pb.yml
 
     for pb in playbook_combinations(playbook_paths):
         if pb.exists():
@@ -243,7 +240,10 @@ class CommandProcessor:
 
         return src, dst
 
-    def do_vars(self, **kv):
+    def do_args(self, **kv) -> None:
+        raise NotImplementedError()
+
+    def do_vars(self, **kv) -> None:
         self.config.update(self.jinja_expand_dict(kv))
 
     #  deprecated: Renamed "config" to "vars"
@@ -256,7 +256,7 @@ class CommandProcessor:
         skip: bool = False,
         decrypt_password: Union[None, str] = None,
         encrypt_password: Union[None, str] = None,
-    ):
+    ) -> None:
         env = {"src": src, "dst": dst}
         src = self.jinja_expand_str(src, env)
         dst = self.jinja_expand_str(dst, env)
@@ -281,7 +281,7 @@ class CommandProcessor:
         skip: bool = False,
         decrypt_password: Union[None, str] = None,
         encrypt_password: Union[None, str] = None,
-    ):
+    ) -> None:
         env = {"src": src, "dst": dst}
         src = self.jinja_expand_str(src, env)
         dst = self.jinja_expand_str(dst, env)
@@ -302,7 +302,7 @@ class CommandProcessor:
         with open(dst, "w") as fout:
             fout.write(data)
 
-    def do_mkdir(self, path: str, skip: bool = False):
+    def do_mkdir(self, path: str, skip: bool = False) -> None:
         path = self.jinja_expand_str(path)
         print(f"mkdir({path})")
         if skip == "if_exists" and os.path.exists(path):
@@ -311,7 +311,7 @@ class CommandProcessor:
 
         os.makedirs(path)
 
-    def do_rm(self, path: str, recursive: bool = False):
+    def do_rm(self, path: str, recursive: bool = False) -> None:
         path = self.jinja_expand_str(path)
         print(f"rm({path})")
         if not os.path.exists(path):
@@ -323,14 +323,14 @@ class CommandProcessor:
 
         os.remove(path)
 
-    def do_run(self, command: str):
+    def do_run(self, command: str) -> None:
         command = self.jinja_expand_str(command)
         print(f"run({command})")
         sys.stdout.flush()
         sys.stderr.flush()
         subprocess.run(command, shell=True)
 
-    def do_cd(self, path: str):
+    def do_cd(self, path: str) -> None:
         path = self.jinja_expand_str(path)
         print(f"cd({path})")
         os.chdir(path)

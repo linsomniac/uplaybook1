@@ -2,5 +2,5 @@
 #
 #  Test the basics
 
-"$UP" playbook.yml
+"$UP" up.yml
 exit $?
