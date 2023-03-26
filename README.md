@@ -137,16 +137,19 @@ Each directory in the search path is checked for a playbook with the following r
   - playbook.yaml
   - playbook.yml
 
-## Template Search Path
+## File and Template Search Path
 
-Template files are searched for in a colon-separated path, either gotten from the
-UP\_TEMPLATE\_PATH or the default of ".:./templates".  A "." in the template path is
+uPlaybook does not use different directories to store files and templates, like
+Ansible does.
+
+Templates and files are searched for in a colon-separated path, either gotten from the
+UP\_FILE\_PATH or the default of ".:./files".  A "." in the file path is
 relative to the directory that contains the playbook file.
 
-The default search path looks for template files in:
+The default search path looks for templates/files in:
 
 - The same directory as the playbook
-- In a subdirectory (by the playbook) named "templates".
+- In a subdirectory (by the playbook) named "files".
 
 ## Available Tasks
 

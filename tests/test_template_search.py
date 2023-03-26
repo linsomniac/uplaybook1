@@ -73,10 +73,10 @@ class TestTemplateSearch(unittest.TestCase):
     def setUp(self):
         self.test_dir = Path(tempfile.mkdtemp())
         print(f' *** Test dir: {self.test_dir}')
-        os.mkdir(self.test_dir.joinpath('templates'))
+        os.mkdir(self.test_dir.joinpath('files'))
         with open(self.test_dir.joinpath('topdir.j2'), 'w') as fp:
             fp.write('Placeholder')
-        with open(self.test_dir.joinpath('templates').joinpath('subdir.j2'), 'w') as fp:
+        with open(self.test_dir.joinpath('files').joinpath('subdir.j2'), 'w') as fp:
             fp.write('Placeholder')
 
 
@@ -86,34 +86,33 @@ class TestTemplateSearch(unittest.TestCase):
 
     def test_template_search(self):
         cmd = up.CommandProcessor(self.test_dir.joinpath('playbook.yml').parent)
-        assert cmd.find_template('topdir.j2') == self.test_dir.joinpath('topdir.j2')
-        assert cmd.find_template('subdir.j2') == self.test_dir.joinpath('templates').joinpath('subdir.j2')
+        assert cmd.find_file('topdir.j2') == self.test_dir.joinpath('topdir.j2')
+        assert cmd.find_file('subdir.j2') == self.test_dir.joinpath('files').joinpath('subdir.j2')
 
     def test_template_search_env(self):
-        os.environ['UP_TEMPLATE_PATH'] = '.'
+        os.environ['UP_FILES_PATH'] = '.'
         cmd = up.CommandProcessor(self.test_dir.joinpath('playbook.yml').parent)
-        assert cmd.find_template('topdir.j2') == self.test_dir.joinpath('topdir.j2')
-        with self.assertRaises(FileNotFoundError):
-            assert cmd.find_template('subdir.j2') == self.test_dir.joinpath('templates').joinpath('subdir.j2')
+        assert cmd.find_file('topdir.j2') == self.test_dir.joinpath('topdir.j2')
+        assert cmd.find_file('subdir.j2') == self.test_dir.joinpath('files').joinpath('subdir.j2')
 
     def test_template_search_env2(self):
-        os.environ['UP_TEMPLATE_PATH'] = './foo'
+        os.environ['UP_FILES_PATH'] = './foo'
         cmd = up.CommandProcessor(self.test_dir.joinpath('playbook.yml').parent)
         with self.assertRaises(FileNotFoundError):
-            assert cmd.find_template('topdir.j2') == self.test_dir.joinpath('topdir.j2')
+            assert cmd.find_file('topdir.j2') == self.test_dir.joinpath('topdir.j2')
         with self.assertRaises(FileNotFoundError):
-            assert cmd.find_template('subdir.j2') == self.test_dir.joinpath('templates').joinpath('subdir.j2')
+            assert cmd.find_file('subdir.j2') == self.test_dir.joinpath('files').joinpath('subdir.j2')
 
     def test_template_search_env3(self):
-        os.environ['UP_TEMPLATE_PATH'] = './templates'
+        os.environ['UP_FILES_PATH'] = './files'
         cmd = up.CommandProcessor(self.test_dir.joinpath('playbook.yml').parent)
         with self.assertRaises(FileNotFoundError):
-            assert cmd.find_template('topdir.j2') == self.test_dir.joinpath('topdir.j2')
-        assert cmd.find_template('subdir.j2') == self.test_dir.joinpath('templates').joinpath('subdir.j2')
+            assert cmd.find_file('topdir.j2') == self.test_dir.joinpath('topdir.j2')
+        assert cmd.find_file('subdir.j2') == self.test_dir.joinpath('files').joinpath('subdir.j2')
 
     def test_template_search_env4(self):
-        os.environ['UP_TEMPLATE_PATH'] = str(self.test_dir.joinpath('playbook.yml').parent)
+        os.environ['UP_FILES_PATH'] = str(self.test_dir.joinpath('playbook.yml').parent)
         cmd = up.CommandProcessor(self.test_dir.joinpath('playbook.yml').parent)
-        assert cmd.find_template('topdir.j2') == self.test_dir.joinpath('topdir.j2')
+        assert cmd.find_file('topdir.j2') == self.test_dir.joinpath('topdir.j2')
         with self.assertRaises(FileNotFoundError):
-            assert cmd.find_template('subdir.j2') == self.test_dir.joinpath('templates').joinpath('subdir.j2')
+            assert cmd.find_file('subdir.j2') == self.test_dir.joinpath('files').joinpath('subdir.j2')
