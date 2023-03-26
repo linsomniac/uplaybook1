@@ -9,13 +9,12 @@ import tempfile
 import shutil
 import yaml
 from collections import OrderedDict
-from typing import Union, Tuple, List
+from typing import Union, Tuple, List, Iterator
 import base64
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from pathlib import Path
-from itertools import product
 
 
 def find_playbook(playbookname: str) -> Path:
@@ -41,23 +40,22 @@ def find_playbook(playbookname: str) -> Path:
         "UP_PLAYBOOK_PATH",
         ".:.uplaybooks:~/.config/uplaybook/books:~/.config/uplaybook",
     )
-    search_path = [Path(x).expanduser().joinpath(playbookname) for x in search_path.split(":")]
-    pbdir_files = ["playbook.yaml", "playbook.yml", "playbook"]
+    playbook_paths = [
+        Path(x).expanduser().joinpath(playbookname) for x in search_path.split(":")
+    ]
 
-    for pb_name in search_path:
-        if pb_name.is_dir():
-            for pbdir_file in [pb_name.joinpath(x) for x in pbdir_files]:
-                if pbdir_file.exists():
-                    return pbdir_file
-            continue
+    def playbook_combinations(paths: List[Path]) -> Iterator[Path]:
+        for pb in paths:
+            yield pb.joinpath("playbook.yaml")  #  pb/playbook.yaml
+            yield pb.joinpath("playbook.yml")  #  pb/playbook.yml
+            yield pb.joinpath("playbook")  #  pb/playbook
+            yield pb  #  pb
+            yield pb.parent.joinpath(pb.stem + ".yaml")  #  pb.yaml
+            yield pb.parent.joinpath(pb.stem + ".yml")  #  pb.yml
 
-        if pb_name.exists():
-            return pb_name
-
-        pb_with_extensions = [pb_name.parent.joinpath(pb_name.stem + x) for x in ('.yaml', '.yml')]
-        for pb_with_ext in pb_with_extensions:
-            if pb_with_ext.exists():
-                return pb_with_ext
+    for pb in playbook_combinations(playbook_paths):
+        if pb.exists():
+            return pb
 
     raise FileNotFoundError(
         f"Unable to locate a playbook by the name of {playbookname},"
