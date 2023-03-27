@@ -20,6 +20,7 @@ configuration files, including passwords and ssh keys, during new machine deploy
 - Ansible-inspired yaml configuration.
 - Environment variables are brought into template namepsace.
 - Helpers for fernet encrypt/decrypt.
+- Good command-line argument handling.
 
 ## Requirements
 
@@ -85,6 +86,44 @@ Then run "up":
 
 NOTE: The example playbook includes references to several templates that are not
 created above, so it will error out if they do not exist.
+
+## Playbook Arguments
+
+User-supplied arguments can be specified in an "args" section of the playbook.  For
+example:
+
+```yaml
+- args:
+  schema:
+    #  require the name of the role to create
+    - name: role_name
+      description: "The name of the role directory to create."
+    #  Optionally, allow handlers to be disabled (default is true)
+    - name: add_handlers
+      default: true
+      type: bool
+      description: "Whether to add handlers to the role."
+```
+
+Given the above in a playbook called "makerole", here are some example runs:
+
+    $ ./up makerole
+    usage: up:makerole [-h] [--add-handlers | --no-add-handlers] role-name
+    up:makerole: error: the following arguments are required: role-name
+    $ ./up makerole foo   #  Create a role "foo" with handlers
+    $ ./up makerole foo --no-add-handlers  #  And without
+
+The "schema" can contain elements with the following values:
+
+- name (Required): The name of the argument, this is the name used to access the value in
+  templating, so it must be a valid Python identifier (no hyphens, for example), and
+  is the name of the argument.
+- type (Optional): Type of the value, defaults to "str".  Can also be "bool" for true/false
+  arguments.
+- default (Optional): Gives a default value.  If a default is given, the argument is
+  optional.  This means it can be specified using "--<NAME>", otherwise it is a
+  positional argument and must always be supplied on the command line by position.
+- description (Optional): A sentence or two description of the argument's purpose.
 
 ## Loops
 
@@ -180,6 +219,19 @@ Example:
       dst: /usr/bin/program
       skip: if\_exists
       decrypt\_password: foobar
+
+### echo
+
+Write a message to stdout.
+
+Arguments:
+
+- msg: String that is printed to the output.  (template expanded)
+
+Example:
+
+    - echo:
+      msg: "The value of argname is '{{argname}}'"
 
 ### mkdir
 

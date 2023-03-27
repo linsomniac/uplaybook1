@@ -15,6 +15,7 @@ from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from pathlib import Path
+import argparse
 
 
 def find_playbook(playbookname: str) -> Path:
@@ -141,7 +142,7 @@ def fernet_decrypt(filename: str, password: bytes) -> bytes:
 
 
 class CommandProcessor:
-    def __init__(self, template_dir: Path):
+    def __init__(self, template_dir: Path, playbook_name: Path) -> None:
         self.config = {"environ": os.environ}
 
         self.jinja_env = jinja2.Environment()
@@ -149,6 +150,7 @@ class CommandProcessor:
         self.jinja_env.filters["dirname"] = os.path.dirname
         self.jinja_env.filters["abspath"] = os.path.abspath
         self.template_dir = template_dir
+        self.playbook_name = str(playbook_name)
 
     def jinja_expand_str(self, s: str, env_in: Union[None, dict] = None) -> str:
         env = self.config.copy()
@@ -240,8 +242,34 @@ class CommandProcessor:
 
         return src, dst
 
-    def do_args(self, **kv) -> None:
-        raise NotImplementedError()
+    def do_args(self, schema) -> None:
+        parser = argparse.ArgumentParser(prog=f'up:{self.playbook_name}')
+        for arg in schema:
+            kw_args = {'type': str, }
+            orig_arg_name = arg['name']
+            arg_name = arg['name'].replace('_', '-')
+            if 'default' in arg:
+                kw_args['dest'] = arg_name
+                arg_name = '--' + arg_name
+                kw_args['default'] = arg['default']
+            #  @@@ Can query from user by adding the following:
+            #  @@@ And then looking for missing arguments not in "args" at the end
+            #else:
+            #    arg_name = '--' + arg_name
+            #    kw_args['default'] = argparse.SUPPRESS
+            if 'description' in arg:
+                kw_args['help'] = arg['description']
+            if 'type' in arg:
+                kw_args['type'] = {'bool': bool, 'str': str, 'int': int}[arg['type']]
+            if kw_args['type'] is bool:
+                kw_args['action'] = argparse.BooleanOptionalAction
+
+            parser.add_argument(arg_name, **kw_args)
+        args = parser.parse_args(sys.argv[2:])
+
+        args_vars = vars(args)
+        for arg in schema:
+            self.config[arg['name']] = args_vars[arg['name'].replace('_', '-')]
 
     def do_vars(self, **kv) -> None:
         self.config.update(self.jinja_expand_dict(kv))
@@ -335,15 +363,20 @@ class CommandProcessor:
         print(f"cd({path})")
         os.chdir(path)
 
+    def do_echo(self, msg: str) -> None:
+        print(self.jinja_expand_str(msg))
+
 
 if __name__ == "__main__":
     playbook_file = find_playbook(sys.argv[1])
 
     data = ordered_load(open(playbook_file, "r"), yaml.SafeLoader)
     data = unroll_loops(data)
-    runner = CommandProcessor(playbook_file.parent)
+    runner = CommandProcessor(playbook_file.parent, playbook_file.name)
     for statement in data:
         command = list(statement.keys())[0]
+        #  if I want to pull the value from the command
+        #command_value = statement[command]
         del statement[command]
         args = statement
 
