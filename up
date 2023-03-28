@@ -194,6 +194,55 @@ class CommandProcessor:
             f"Could not find template {filename}, searched in {search_path}"
         )
 
+    def evaluate(self, condition: Union[str, bool]) -> bool:
+        """
+        Determines if the given condition is True or False.
+
+        This function accepts a condition that can be either a boolean value or a string
+        representing a boolean expression.  If the condition is already a boolean value
+        (due to a "false" in yaml), it returns the same value. If the condition is a
+        string, the function evaluates the boolean expression and returns the result.
+
+        The `eval` function is used to evaluate the expression, and the evaluation
+        is performed in the context of the `self.config` dictionary. Any variables
+        used in the expression should be defined in this dictionary.
+
+        Parameters
+        ----------
+        condition : Union[str, bool]
+            The condition to evaluate.
+
+        Returns
+        -------
+        bool
+            The result of evaluating the condition.
+
+        Raises
+        ------
+        TypeError
+            If the `condition` is not a boolean value or a string.
+        SyntaxError
+            If the `condition` is a string with an invalid boolean expression.
+
+        Examples
+        --------
+        >>> evaluate(True)
+        True
+        >>> evaluate(False)
+        False
+        >>> evaluate("3 > 2")
+        True
+        >>> evaluate("5 < 2")
+        False
+        """
+        if condition is False:
+            return False
+        if condition is True:
+            return True
+        ret = eval(condition, self.config)
+        return ret
+
+
     def jinja_expand_dict(self, d: dict) -> dict:
         env = self.config.copy()
         env.update(d)
@@ -367,19 +416,34 @@ class CommandProcessor:
         print(self.jinja_expand_str(msg))
 
     def do_if(self, _, condition: str, tasks) -> None:
-        print(f"if({condition})")
-        ret = eval(condition, self.config)
-        if not ret:
+        self.last_if_result = self.evaluate(condition)
+        if not self.last_if_result:
             return
-
         self.run_tasks(tasks)
 
-    def run_tasks(self, tasks):
+    def do_elif(self, _, condition: str, tasks) -> None:
+        if self.previous_command not in ['if', 'elif']:
+            raise ValueError('"elif" can only occur after a "if" or "elif"')
+        if self.last_if_result:
+            return
+        self.last_if_result = self.evaluate(condition)
+        if not self.last_if_result:
+            return
+        self.run_tasks(tasks)
+
+    def do_else(self, _, tasks) -> None:
+        if self.previous_command not in ['if', 'elif']:
+            raise ValueError('"else" can only occur after a "if" or "elif"')
+        if self.last_if_result:
+            return
+        self.run_tasks(tasks)
+
+    def run_tasks(self, tasks: List) -> None:
         for statement in tasks:
             command = list(statement.keys())[0]
             command_value = statement[command]
-            del statement[command]
-            args = statement
+            args = statement.copy()
+            del(args[command])
 
             try:
                 func = getattr(self, f"do_{command}")
@@ -387,6 +451,8 @@ class CommandProcessor:
                 sys.stderr.write(f'ERROR: Unknown command "{command}"')
                 sys.exit(1)
             func(command_value, **args)
+
+            self.previous_command = command
 
 
 if __name__ == "__main__":

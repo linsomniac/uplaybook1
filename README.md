@@ -238,15 +238,13 @@ Example:
     - echo:
       msg: "The value of argname is '{{argname}}'"
 
-### if
+### if/elif/else
 
 This introduces a conditional with further tasks that run if the condition is true.
 
-NOTE: This does not work with "loop" currently.
-
 Arguments:
 
-- condition: A Python expression.
+- condition: A Python expression or a YAML true/false.
 - tasks: A list of further tasks to run if condition is true.
 
 Example:
@@ -256,6 +254,15 @@ Example:
       tasks:
         - mkdir:
           path: foo
+    - elif:
+      condition: "os.path.exists('bar')"
+      tasks:
+        - mkdir:
+          path: bar
+    - else:
+      tasks:
+        - echo:
+          msg: "Both directories exist"
 
 ### mkdir
 
