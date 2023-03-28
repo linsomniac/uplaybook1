@@ -142,8 +142,8 @@ def fernet_decrypt(filename: str, password: bytes) -> bytes:
 
 
 class CommandProcessor:
-    def __init__(self, template_dir: Path, playbook_name: Path) -> None:
-        self.config = {"environ": os.environ}
+    def __init__(self, template_dir: Path, playbook_name: Union[str, Path]) -> None:
+        self.config = {"environ": os.environ, "os": os}
 
         self.jinja_env = jinja2.Environment()
         self.jinja_env.filters["basename"] = os.path.basename
@@ -242,7 +242,7 @@ class CommandProcessor:
 
         return src, dst
 
-    def do_args(self, schema) -> None:
+    def do_args(self, _, schema) -> None:
         parser = argparse.ArgumentParser(prog=f'up:{self.playbook_name}')
         for arg in schema:
             kw_args = {'type': str, }
@@ -271,14 +271,14 @@ class CommandProcessor:
         for arg in schema:
             self.config[arg['name']] = args_vars[arg['name'].replace('_', '-')]
 
-    def do_vars(self, **kv) -> None:
+    def do_vars(self, _, **kv) -> None:
         self.config.update(self.jinja_expand_dict(kv))
 
     #  deprecated: Renamed "config" to "vars"
     do_config = do_vars
 
     def do_copy(
-        self,
+        self, _,
         src: str,
         dst: str,
         skip: bool = False,
@@ -303,7 +303,7 @@ class CommandProcessor:
         shutil.copy(src, dst)
 
     def do_template(
-        self,
+        self, _,
         src: str,
         dst: str,
         skip: bool = False,
@@ -330,7 +330,7 @@ class CommandProcessor:
         with open(dst, "w") as fout:
             fout.write(data)
 
-    def do_mkdir(self, path: str, skip: bool = False) -> None:
+    def do_mkdir(self, _, path: str, skip: bool = False) -> None:
         path = self.jinja_expand_str(path)
         print(f"mkdir({path})")
         if skip == "if_exists" and os.path.exists(path):
@@ -339,7 +339,7 @@ class CommandProcessor:
 
         os.makedirs(path)
 
-    def do_rm(self, path: str, recursive: bool = False) -> None:
+    def do_rm(self, _, path: str, recursive: bool = False) -> None:
         path = self.jinja_expand_str(path)
         print(f"rm({path})")
         if not os.path.exists(path):
@@ -351,20 +351,42 @@ class CommandProcessor:
 
         os.remove(path)
 
-    def do_run(self, command: str) -> None:
+    def do_run(self, _, command: str) -> None:
         command = self.jinja_expand_str(command)
         print(f"run({command})")
         sys.stdout.flush()
         sys.stderr.flush()
         subprocess.run(command, shell=True)
 
-    def do_cd(self, path: str) -> None:
+    def do_cd(self, _, path: str) -> None:
         path = self.jinja_expand_str(path)
         print(f"cd({path})")
         os.chdir(path)
 
-    def do_echo(self, msg: str) -> None:
+    def do_echo(self, _, msg: str) -> None:
         print(self.jinja_expand_str(msg))
+
+    def do_if(self, _, condition: str, tasks) -> None:
+        print(f"if({condition})")
+        ret = eval(condition, self.config)
+        if not ret:
+            return
+
+        self.run_tasks(tasks)
+
+    def run_tasks(self, tasks):
+        for statement in tasks:
+            command = list(statement.keys())[0]
+            command_value = statement[command]
+            del statement[command]
+            args = statement
+
+            try:
+                func = getattr(self, f"do_{command}")
+            except AttributeError:
+                sys.stderr.write(f'ERROR: Unknown command "{command}"')
+                sys.exit(1)
+            func(command_value, **args)
 
 
 if __name__ == "__main__":
@@ -373,16 +395,4 @@ if __name__ == "__main__":
     data = ordered_load(open(playbook_file, "r"), yaml.SafeLoader)
     data = unroll_loops(data)
     runner = CommandProcessor(playbook_file.parent, playbook_file.name)
-    for statement in data:
-        command = list(statement.keys())[0]
-        #  if I want to pull the value from the command
-        #command_value = statement[command]
-        del statement[command]
-        args = statement
-
-        try:
-            attr = getattr(runner, f"do_{command}")
-        except AttributeError:
-            sys.stderr.write(f'ERROR: Unknown command "{command}"')
-            sys.exit(1)
-        attr(**args)
+    runner.run_tasks(data)

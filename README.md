@@ -74,6 +74,11 @@ Given a "exampleplaybook.yaml" that looks like this:
       path: "{{destdir}}"
     - run:
       command: "ls -ld"
+    - if:
+      condition: "not os.path.exists('foo')"
+      tasks:
+        - mkdir:
+          path: foo
     
 You can run the test by first encrypting a file:
 
@@ -232,6 +237,25 @@ Example:
 
     - echo:
       msg: "The value of argname is '{{argname}}'"
+
+### if
+
+This introduces a conditional with further tasks that run if the condition is true.
+
+NOTE: This does not work with "loop" currently.
+
+Arguments:
+
+- condition: A Python expression.
+- tasks: A list of further tasks to run if condition is true.
+
+Example:
+
+    - if:
+      condition: "os.path.exists('foo')"
+      tasks:
+        - mkdir:
+          path: foo
 
 ### mkdir
 
