@@ -189,6 +189,17 @@ The default search path looks for templates/files in:
 - The same directory as the playbook
 - In a subdirectory (by the playbook) named "files".
 
+## Debugging
+
+If you set "up\_debug" to true, debugging information will be printed during the
+playbook run.  It can also be enabled from the CLI by adding the "--debug" argument:
+`up --debug playbook`.
+
+Example:
+
+    - vars:
+      up_debug: true
+
 ## Available Tasks
 
 ### cd

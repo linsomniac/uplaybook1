@@ -151,6 +151,20 @@ class CommandProcessor:
         self.jinja_env.filters["abspath"] = os.path.abspath
         self.template_dir = template_dir
         self.playbook_name = str(playbook_name)
+        self.set_remaining_args(sys.argv[1:])
+
+    def debug(self, msg):
+        if not self.globals.get("up_debug"):
+            return
+        print(msg)
+
+    def set(self, var: str, value) -> None:
+        '''Set a global value'''
+        self.globals[var] = value
+
+    def set_remaining_args(self, remaining_args: List) -> None:
+        '''Store the remaining command-line arguments after they have been parsed so far'''
+        self.remaining_args = remaining_args
 
     def jinja_expand_str(self, s: str, env_in: Union[None, dict] = None) -> str:
         env = self.globals.copy()
@@ -242,7 +256,6 @@ class CommandProcessor:
         ret = eval(condition, self.globals)
         return ret
 
-
     def jinja_expand_dict(self, d: dict) -> dict:
         env = self.globals.copy()
         env.update(d)
@@ -292,33 +305,36 @@ class CommandProcessor:
         return src, dst
 
     def do_args(self, _, schema) -> None:
-        parser = argparse.ArgumentParser(prog=f'up:{self.playbook_name}')
+        parser = argparse.ArgumentParser(prog=f"up:{self.playbook_name}")
         for arg in schema:
-            kw_args = {'type': str, }
-            orig_arg_name = arg['name']
-            arg_name = arg['name'].replace('_', '-')
-            if 'default' in arg:
-                kw_args['dest'] = arg_name
-                arg_name = '--' + arg_name
-                kw_args['default'] = arg['default']
+            kw_args = {
+                "type": str,
+            }
+            orig_arg_name = arg["name"]
+            arg_name = arg["name"].replace("_", "-")
+            if "default" in arg:
+                kw_args["dest"] = arg_name
+                arg_name = "--" + arg_name
+                kw_args["default"] = arg["default"]
             #  @@@ Can query from user by adding the following:
             #  @@@ And then looking for missing arguments not in "args" at the end
-            #else:
+            # else:
             #    arg_name = '--' + arg_name
             #    kw_args['default'] = argparse.SUPPRESS
-            if 'description' in arg:
-                kw_args['help'] = arg['description']
-            if 'type' in arg:
-                kw_args['type'] = {'bool': bool, 'str': str, 'int': int}[arg['type']]
-            if kw_args['type'] is bool:
-                kw_args['action'] = argparse.BooleanOptionalAction
+            if "description" in arg:
+                kw_args["help"] = arg["description"]
+            if "type" in arg:
+                kw_args["type"] = {"bool": bool, "str": str, "int": int}[arg["type"]]
+            if kw_args["type"] is bool:
+                kw_args["action"] = argparse.BooleanOptionalAction
 
             parser.add_argument(arg_name, **kw_args)
-        args = parser.parse_args(sys.argv[2:])
+        args, remaining = parser.parse_known_args(self.remaining_args)
+        self.set_remaining_args(remaining)
 
         args_vars = vars(args)
         for arg in schema:
-            self.globals[arg['name']] = args_vars[arg['name'].replace('_', '-')]
+            self.globals[arg["name"]] = args_vars[arg["name"].replace("_", "-")]
 
     def do_vars(self, _, **kv) -> None:
         self.globals.update(self.jinja_expand_dict(kv))
@@ -327,7 +343,8 @@ class CommandProcessor:
     do_config = do_vars
 
     def do_copy(
-        self, _,
+        self,
+        _,
         src: str,
         dst: str,
         skip: bool = False,
@@ -341,9 +358,9 @@ class CommandProcessor:
             src, dst, decrypt_password, encrypt_password, env
         )
 
-        print(f"copy({src}  {dst})")
+        self.debug(f"copy({src}  {dst})")
         if skip == "if_exists" and os.path.exists(dst):
-            print("Exists")
+            self.debug("Exists")
             return
 
         if "/" not in src:
@@ -352,7 +369,8 @@ class CommandProcessor:
         shutil.copy(src, dst)
 
     def do_template(
-        self, _,
+        self,
+        _,
         src: str,
         dst: str,
         skip: bool = False,
@@ -366,9 +384,9 @@ class CommandProcessor:
             src, dst, decrypt_password, encrypt_password, env
         )
 
-        print(f"template({src}  {dst})")
+        self.debug(f"template({src}  {dst})")
         if skip == "exists" and os.path.exists(dst):
-            print("Exists")
+            self.debug("Exists")
             return
 
         if "/" not in src:
@@ -381,16 +399,16 @@ class CommandProcessor:
 
     def do_mkdir(self, _, path: str, skip: bool = False) -> None:
         path = self.jinja_expand_str(path)
-        print(f"mkdir({path})")
+        self.debug(f"mkdir({path})")
         if skip == "if_exists" and os.path.exists(path):
-            print("Exists")
+            self.debug("Exists")
             return
 
         os.makedirs(path)
 
     def do_rm(self, _, path: str, recursive: bool = False) -> None:
         path = self.jinja_expand_str(path)
-        print(f"rm({path})")
+        self.debug(f"rm({path})")
         if not os.path.exists(path):
             return
 
@@ -402,27 +420,29 @@ class CommandProcessor:
 
     def do_run(self, _, command: str) -> None:
         command = self.jinja_expand_str(command)
-        print(f"run({command})")
+        self.debug(f"run({command})")
         sys.stdout.flush()
         sys.stderr.flush()
         subprocess.run(command, shell=True)
 
     def do_cd(self, _, path: str) -> None:
         path = self.jinja_expand_str(path)
-        print(f"cd({path})")
+        self.debug(f"cd({path})")
         os.chdir(path)
 
     def do_echo(self, _, msg: str) -> None:
         print(self.jinja_expand_str(msg))
 
     def do_if(self, _, condition: str, tasks) -> None:
+        self.debug(f"if({condition})")
         self.last_if_result = self.evaluate(condition)
         if not self.last_if_result:
             return
         self.run_tasks(tasks)
 
     def do_elif(self, _, condition: str, tasks) -> None:
-        if self.previous_command not in ['if', 'elif']:
+        self.debug(f"elif({condition})")
+        if self.previous_command not in ["if", "elif"]:
             raise ValueError('"elif" can only occur after a "if" or "elif"')
         if self.last_if_result:
             return
@@ -432,7 +452,8 @@ class CommandProcessor:
         self.run_tasks(tasks)
 
     def do_else(self, _, tasks) -> None:
-        if self.previous_command not in ['if', 'elif']:
+        self.debug(f"elif()")
+        if self.previous_command not in ["if", "elif"]:
             raise ValueError('"else" can only occur after a "if" or "elif"')
         if self.last_if_result:
             return
@@ -443,7 +464,7 @@ class CommandProcessor:
             command = list(statement.keys())[0]
             command_value = statement[command]
             args = statement.copy()
-            del(args[command])
+            del args[command]
 
             try:
                 func = getattr(self, f"do_{command}")
@@ -456,9 +477,20 @@ class CommandProcessor:
 
 
 if __name__ == "__main__":
-    playbook_file = find_playbook(sys.argv[1])
+    parser = argparse.ArgumentParser(
+        prog="up",
+        description="Run playbooks of actions, typically to set up some sort of environment.",
+    )
+    parser.add_argument('--debug', action='store_true')
+    parser.add_argument('playbook')
+    args, remaining_args = parser.parse_known_args()
+
+    playbook_file = find_playbook(args.playbook)
 
     data = ordered_load(open(playbook_file, "r"), yaml.SafeLoader)
     data = unroll_loops(data)
     runner = CommandProcessor(playbook_file.parent, playbook_file.name)
+    runner.set_remaining_args(remaining_args)
+    if args.debug:
+        runner.set('up_debug', True)
     runner.run_tasks(data)
