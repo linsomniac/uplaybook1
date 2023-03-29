@@ -70,13 +70,6 @@ import os
 from typing import Union
 
 class TestEvaluate(unittest.TestCase):
-    def evaluate(self, condition: Union[str, bool], config: dict) -> bool:
-        if condition is False:
-            return False
-        if condition is True:
-            return True
-        return eval(condition, config)
-    
     def test_evaluate(self):
         cmd = up.CommandProcessor('.', 'up.yml')
 
@@ -87,9 +80,9 @@ class TestEvaluate(unittest.TestCase):
         # Test cases with string input
         self.assertTrue(cmd.evaluate("3 > 2"))
         self.assertFalse(cmd.evaluate("3 < 2"))
-        cmd.config['x'] = 6
+        cmd.globals['x'] = 6
         self.assertTrue(cmd.evaluate("x > 5"))
-        cmd.config['x'] = 4
+        cmd.globals['x'] = 4
         self.assertFalse(cmd.evaluate("x > 5"))
         
         # Test cases with invalid input (should raise exceptions)

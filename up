@@ -143,7 +143,7 @@ def fernet_decrypt(filename: str, password: bytes) -> bytes:
 
 class CommandProcessor:
     def __init__(self, template_dir: Path, playbook_name: Union[str, Path]) -> None:
-        self.config = {"environ": os.environ, "os": os}
+        self.globals = {"environ": os.environ, "os": os}
 
         self.jinja_env = jinja2.Environment()
         self.jinja_env.filters["basename"] = os.path.basename
@@ -153,7 +153,7 @@ class CommandProcessor:
         self.playbook_name = str(playbook_name)
 
     def jinja_expand_str(self, s: str, env_in: Union[None, dict] = None) -> str:
-        env = self.config.copy()
+        env = self.globals.copy()
         if env_in != None:
             env.update(env_in)
         return self.jinja_env.from_string(s).render(env)
@@ -204,7 +204,7 @@ class CommandProcessor:
         string, the function evaluates the boolean expression and returns the result.
 
         The `eval` function is used to evaluate the expression, and the evaluation
-        is performed in the context of the `self.config` dictionary. Any variables
+        is performed in the context of the `self.globals` dictionary. Any variables
         used in the expression should be defined in this dictionary.
 
         Parameters
@@ -239,12 +239,12 @@ class CommandProcessor:
             return False
         if condition is True:
             return True
-        ret = eval(condition, self.config)
+        ret = eval(condition, self.globals)
         return ret
 
 
     def jinja_expand_dict(self, d: dict) -> dict:
-        env = self.config.copy()
+        env = self.globals.copy()
         env.update(d)
         results = {}
         for k, v in d.items():
@@ -318,10 +318,10 @@ class CommandProcessor:
 
         args_vars = vars(args)
         for arg in schema:
-            self.config[arg['name']] = args_vars[arg['name'].replace('_', '-')]
+            self.globals[arg['name']] = args_vars[arg['name'].replace('_', '-')]
 
     def do_vars(self, _, **kv) -> None:
-        self.config.update(self.jinja_expand_dict(kv))
+        self.globals.update(self.jinja_expand_dict(kv))
 
     #  deprecated: Renamed "config" to "vars"
     do_config = do_vars
