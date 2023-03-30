@@ -238,16 +238,34 @@ Example:
 
 ### echo
 
-Write a message to stdout.
+Write a message to stdout, or optionally to stderr.  If neither is specified, a
+newline is printed to stdout.
 
 Arguments:
 
 - msg: String that is printed to the output.  (template expanded)
+- stderr: String that is written to stderr.  (template expanded)
 
 Example:
 
     - echo:
       msg: "The value of argname is '{{argname}}'"
+
+### exit
+
+Terminate the playbook, optionally specifying an exit code or message.
+
+Arguments:
+
+- code: Exit code, defaults to 0 (success).
+- msg: String that is printed to the output.  (template expanded)
+- stderr: String that is written to stderr.  (template expanded)
+
+Example:
+
+    - exit:
+      code: 1
+      stderr: "Failed to engage oscillation overthruster."
 
 ### if/elif/else
 

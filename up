@@ -166,11 +166,36 @@ class CommandProcessor:
         '''Store the remaining command-line arguments after they have been parsed so far'''
         self.remaining_args = remaining_args
 
+    def jinja_expand_str_none(self, s: Union[str, None], env_in: Union[None, dict] = None) -> Union[str, None]:
+        '''Jinja2 template expand `s` using the environment `env_in`.
+        If `s` is None, return None, otherwise return the template expanded version of `s`.'''
+        if s is None:
+            return None
+        return self.jinja_expand_str(s, env_in)
+
     def jinja_expand_str(self, s: str, env_in: Union[None, dict] = None) -> str:
+        '''Jinja2 template expand `s` using the environment `env_in`.'''
         env = self.globals.copy()
         if env_in != None:
             env.update(env_in)
         return self.jinja_env.from_string(s).render(env)
+
+    def run_tasks(self, tasks: List) -> None:
+        '''Run the given playbook tasks.'''
+        for statement in tasks:
+            command = list(statement.keys())[0]
+            command_value = statement[command]
+            args = statement.copy()
+            del args[command]
+
+            try:
+                func = getattr(self, f"do_{command}")
+            except AttributeError:
+                sys.stderr.write(f'ERROR: Unknown command "{command}"')
+                sys.exit(1)
+            func(command_value, **args)
+
+            self.previous_command = command
 
     def find_file(self, filename: str) -> Path:
         """
@@ -430,17 +455,25 @@ class CommandProcessor:
         self.debug(f"cd({path})")
         os.chdir(path)
 
-    def do_echo(self, _, msg: str) -> None:
-        print(self.jinja_expand_str(msg))
+    def do_echo(self, _, msg: Union[str, None] = None, stderr: Union[str, None] = None) -> None:
+        stderr = self.jinja_expand_str_none(stderr)
+        msg = self.jinja_expand_str_none(msg)
+        self.debug(f"echo(msg={msg}, stderr={stderr})")
+        if stderr is not None:
+            sys.stderr.write(stderr + '\n')
+        if msg is not None:
+            print(msg)
+        if stderr is None and msg is None:
+            print()
 
-    def do_if(self, _, condition: str, tasks) -> None:
+    def do_if(self, _, condition: str, tasks: List) -> None:
         self.debug(f"if({condition})")
         self.last_if_result = self.evaluate(condition)
         if not self.last_if_result:
             return
         self.run_tasks(tasks)
 
-    def do_elif(self, _, condition: str, tasks) -> None:
+    def do_elif(self, _, condition: str, tasks: List) -> None:
         self.debug(f"elif({condition})")
         if self.previous_command not in ["if", "elif"]:
             raise ValueError('"elif" can only occur after a "if" or "elif"')
@@ -451,7 +484,7 @@ class CommandProcessor:
             return
         self.run_tasks(tasks)
 
-    def do_else(self, _, tasks) -> None:
+    def do_else(self, _, tasks: List) -> None:
         self.debug(f"elif()")
         if self.previous_command not in ["if", "elif"]:
             raise ValueError('"else" can only occur after a "if" or "elif"')
@@ -459,21 +492,15 @@ class CommandProcessor:
             return
         self.run_tasks(tasks)
 
-    def run_tasks(self, tasks: List) -> None:
-        for statement in tasks:
-            command = list(statement.keys())[0]
-            command_value = statement[command]
-            args = statement.copy()
-            del args[command]
-
-            try:
-                func = getattr(self, f"do_{command}")
-            except AttributeError:
-                sys.stderr.write(f'ERROR: Unknown command "{command}"')
-                sys.exit(1)
-            func(command_value, **args)
-
-            self.previous_command = command
+    def do_exit(self, _, code: Union[int, str] = 0, msg: Union[str, None] = None, stderr: Union[str, None] = None) -> None:
+        stderr = self.jinja_expand_str_none(stderr)
+        msg = self.jinja_expand_str_none(msg)
+        self.debug(f"exit({code}, msg={msg}, stderr={stderr})")
+        if stderr is not None:
+            sys.stderr.write(stderr + '\n')
+        if msg is not None:
+            print(msg)
+        sys.exit(int(code))
 
 
 if __name__ == "__main__":
