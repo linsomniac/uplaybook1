@@ -16,6 +16,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from pathlib import Path
 import argparse
+import time as time_module
 
 
 def find_playbook(playbookname: str) -> Path:
@@ -501,6 +502,9 @@ class CommandProcessor:
         if msg is not None:
             print(msg)
         sys.exit(int(code))
+
+    def do_pause(self, _, time: str) -> None:
+        time_module.sleep(int(time))
 
 
 if __name__ == "__main__":

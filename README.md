@@ -308,6 +308,19 @@ Example:
     - mkdir:
       path: /tmp/foo
 
+### pause
+
+Stop execution for a time.
+
+Arguments:
+
+- time: The number of seconds to wait.
+
+Example:
+
+    - pause:
+      time: 5
+
 ### rm
 
 Remove a file or directory (if recursive is specified).
