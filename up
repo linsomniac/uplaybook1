@@ -115,10 +115,6 @@ def unroll_loops(lst: List[OrderedDict]) -> List[OrderedDict]:
     return result
 
 
-def generate_salt() -> bytes:
-    return os.urandom(16)
-
-
 def timestr_to_secs(timestr: str) -> int:
     """
     Convert a time string to the number of seconds it represents.
@@ -151,7 +147,26 @@ def timestr_to_secs(timestr: str) -> int:
     return seconds
 
 
+def generate_salt() -> bytes:
+    '''Generate a random 16 byte salt for fernet encryption.'''
+    return os.urandom(16)
+
+
 def fernet_key(password: bytes, salt: bytes) -> Fernet:
+    '''Create a Fernet encryption object for the given password with the salt.
+
+    An "up" Fernet file is 16 random bytes followed by the encrypted data.  For encryption,
+    pass in a random salt.  For decryption, read the first 16 bytes of the encrypted file,
+    and pass that in here as the salt, then use the returned object to decrypt the rest of
+    the file.
+
+    Arguments:
+        - password: The password for de/encryption.
+        - salt: 16 bytes of salt.
+
+    Returns:
+        - Fernet() object for encryption/decryption.
+    '''
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
