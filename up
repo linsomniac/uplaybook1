@@ -7,7 +7,9 @@ import jinja2
 import subprocess
 import tempfile
 import shutil
+import re
 import yaml
+import random
 from collections import OrderedDict
 from typing import Union, Tuple, List, Iterator
 import base64
@@ -116,6 +118,30 @@ def unroll_loops(lst: List[OrderedDict]) -> List[OrderedDict]:
 def generate_salt() -> bytes:
     return os.urandom(16)
 
+
+def timestr_to_secs(timestr: str) -> int:
+    '''
+    Convert a time string to the number of seconds it represents.
+    '''
+    if not timestr:
+        raise ValueError(f'Time string cannot be empty')
+
+    rx = (r'^((?P<random>random)\s+)?((?P<days>\d+)(d|days?)\s*)?((?P<hours>\d+)'
+            r'(h|hr|hours?)\s*)?((?P<minutes>\d+)(m|min|minutes?)\s*)?((?P<seconds>\d+)'
+            r'(s|sec|seconds?)?\s*)?(?P<random2>random)?$')
+    m = re.match(rx, timestr)
+    if not m:
+        raise ValueError(f'Unable to parse time string: "{timestr}"')
+
+    groups = m.groupdict()
+    seconds = 0
+    for group, mult in (('seconds', 1), ('minutes', 60), ('hours', 3600), ('days', 86400)):
+        if groups[group] is not None:
+            seconds += int(groups[group]) * mult
+
+    if groups['random'] is not None or groups['random2'] is not None:
+        seconds = random.randint(1, seconds)
+    return seconds
 
 def fernet_key(password: bytes, salt: bytes) -> Fernet:
     kdf = PBKDF2HMAC(
@@ -504,7 +530,8 @@ class CommandProcessor:
         sys.exit(int(code))
 
     def do_pause(self, _, time: str) -> None:
-        time_module.sleep(int(time))
+        time = self.jinja_expand_str(time)
+        time_module.sleep(timestr_to_secs(time))
 
 
 if __name__ == "__main__":
@@ -512,7 +539,7 @@ if __name__ == "__main__":
         prog="up",
         description="Run playbooks of actions, typically to set up some sort of environment.",
     )
-    parser.add_argument('--debug', action='store_true')
+    parser.add_argument('--up-debug', action='store_true')
     parser.add_argument('playbook')
     args, remaining_args = parser.parse_known_args()
 
@@ -522,6 +549,6 @@ if __name__ == "__main__":
     data = unroll_loops(data)
     runner = CommandProcessor(playbook_file.parent, playbook_file.name)
     runner.set_remaining_args(remaining_args)
-    if args.debug:
+    if args.up_debug:
         runner.set('up_debug', True)
     runner.run_tasks(data)

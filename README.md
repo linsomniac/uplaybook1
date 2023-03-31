@@ -192,8 +192,8 @@ The default search path looks for templates/files in:
 ## Debugging
 
 If you set "up\_debug" to true, debugging information will be printed during the
-playbook run.  It can also be enabled from the CLI by adding the "--debug" argument:
-`up --debug playbook`.
+playbook run.  It can also be enabled from the CLI by adding the "--up-debug" argument:
+`up --up-debug playbook`.
 
 Example:
 
@@ -310,11 +310,16 @@ Example:
 
 ### pause
 
-Stop execution for a time.
+Stop execution for a time.  This can be either a number, or a string representing an
+interval.  The interval can use the format "XdXhXmXs" with any of the components
+being optional.  The specifier can be short or long ("s" or "sec" or "second(s)", and
+there can be spaces between them.  It can also start or end with "random" to
+randomize the number up to the specified time.  Examples: "1h", "1min 30s" "random
+90", "5m random".
 
 Arguments:
 
-- time: The number of seconds to wait.
+- time: The number of seconds to wait or an interval string.  (templated)
 
 Example:
 
