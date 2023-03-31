@@ -362,7 +362,7 @@ not exist.
 Arguments:
 
 - path: The path of the file to stat.   (template expanded)
-- var: The name of a variable that will be set with the result.  (optional)
+- register: The name of a variable that will be set with the result.  (optional)
        This will be a python stat object:
 
     os.stat_result(st_mode=33188, st_ino=7876932, st_dev=234881026,
@@ -373,7 +373,7 @@ Example:
 
     - stat:
       path: "/etc/services"
-      var: stat_result
+      register: stat_result
     - echo:
       msg: "Owned by: {{stat_result.st_uid}}"
 
@@ -397,6 +397,22 @@ Example:
       dst: /etc/my/config
       skip: if\_exists
       decrypt\_password: foobar
+
+### umask
+
+Set the default file creation permission mask.
+
+Arguments:
+
+- mask: New mask to set, either as in integer or as a string which will be
+  interpreted as octal.  (templated)
+- register: Variable name to store old mask in.  (optional)
+
+Example:
+
+    - umask:
+      mask: "077"
+      register: old_umask
 
 ### vars
 

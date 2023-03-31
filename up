@@ -568,12 +568,21 @@ class CommandProcessor:
         time = self.jinja_expand_str(time)
         time_module.sleep(timestr_to_secs(time))
 
-    def do_stat(self, _, path: str, var: Union[str, None] = None) -> None:
+    def do_stat(self, _, path: str, register: Union[str, None] = None) -> None:
         path = self.jinja_expand_str(path)
         self.debug(f"stat({path})")
         stat = os.stat(path)
-        if var:
-            self.globals[var] = stat
+        if register:
+            self.globals[register] = stat
+
+    def do_umask(self, _, mask: Union[str, int], register: Union[str, None] = None) -> None:
+        if type(mask) == str:
+            mask = self.jinja_expand_str(mask)
+            mask = int(mask, 8)
+        self.debug(f"umask({mask:o})")
+        old_mask = os.umask(mask)
+        if register:
+            self.globals[register] = old_mask
 
 
 if __name__ == "__main__":
