@@ -273,7 +273,7 @@ This introduces a conditional with further tasks that run if the condition is tr
 
 Arguments:
 
-- condition: A Python expression or a YAML true/false.
+- condition: A Python expression or a YAML true/false.  (template expanded)
 - tasks: A list of further tasks to run if condition is true.
 
 Example:
@@ -295,7 +295,7 @@ Example:
 
 ### mkdir
 
-Create a directory.
+Create a directory.  Will create intermediate directories if they do not exist.
 
 Arguments:
 
@@ -353,6 +353,29 @@ Example:
 
     - run:
       command: "date"
+
+### stat
+
+Run a stat on a filesystem path.  FileNotFound exception will be raised if it does
+not exist.
+
+Arguments:
+
+- path: The path of the file to stat.   (template expanded)
+- var: The name of a variable that will be set with the result.  (optional)
+       This will be a python stat object:
+
+    os.stat_result(st_mode=33188, st_ino=7876932, st_dev=234881026,
+    st_nlink=1, st_uid=501, st_gid=501, st_size=264, st_atime=1297230295,
+    st_mtime=1297230027, st_ctime=1297230027)
+
+Example:
+
+    - stat:
+      path: "/etc/services"
+      var: stat_result
+    - echo:
+      msg: "Owned by: {{stat_result.st_uid}}"
 
 ### template
 

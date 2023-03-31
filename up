@@ -120,28 +120,36 @@ def generate_salt() -> bytes:
 
 
 def timestr_to_secs(timestr: str) -> int:
-    '''
+    """
     Convert a time string to the number of seconds it represents.
-    '''
+    """
     if not timestr:
-        raise ValueError(f'Time string cannot be empty')
+        raise ValueError(f"Time string cannot be empty")
 
-    rx = (r'^((?P<random>random)\s+)?((?P<days>\d+)(d|days?)\s*)?((?P<hours>\d+)'
-            r'(h|hr|hours?)\s*)?((?P<minutes>\d+)(m|min|minutes?)\s*)?((?P<seconds>\d+)'
-            r'(s|sec|seconds?)?\s*)?(?P<random2>random)?$')
+    rx = (
+        r"^((?P<random>random)\s+)?((?P<days>\d+)(d|days?)\s*)?((?P<hours>\d+)"
+        r"(h|hr|hours?)\s*)?((?P<minutes>\d+)(m|min|minutes?)\s*)?((?P<seconds>\d+)"
+        r"(s|sec|seconds?)?\s*)?(?P<random2>random)?$"
+    )
     m = re.match(rx, timestr)
     if not m:
         raise ValueError(f'Unable to parse time string: "{timestr}"')
 
     groups = m.groupdict()
     seconds = 0
-    for group, mult in (('seconds', 1), ('minutes', 60), ('hours', 3600), ('days', 86400)):
+    for group, mult in (
+        ("seconds", 1),
+        ("minutes", 60),
+        ("hours", 3600),
+        ("days", 86400),
+    ):
         if groups[group] is not None:
             seconds += int(groups[group]) * mult
 
-    if groups['random'] is not None or groups['random2'] is not None:
+    if groups["random"] is not None or groups["random2"] is not None:
         seconds = random.randint(1, seconds)
     return seconds
+
 
 def fernet_key(password: bytes, salt: bytes) -> Fernet:
     kdf = PBKDF2HMAC(
@@ -186,29 +194,31 @@ class CommandProcessor:
         print(msg)
 
     def set(self, var: str, value) -> None:
-        '''Set a global value'''
+        """Set a global value"""
         self.globals[var] = value
 
     def set_remaining_args(self, remaining_args: List) -> None:
-        '''Store the remaining command-line arguments after they have been parsed so far'''
+        """Store the remaining command-line arguments after they have been parsed so far"""
         self.remaining_args = remaining_args
 
-    def jinja_expand_str_none(self, s: Union[str, None], env_in: Union[None, dict] = None) -> Union[str, None]:
-        '''Jinja2 template expand `s` using the environment `env_in`.
-        If `s` is None, return None, otherwise return the template expanded version of `s`.'''
+    def jinja_expand_str_none(
+        self, s: Union[str, None], env_in: Union[None, dict] = None
+    ) -> Union[str, None]:
+        """Jinja2 template expand `s` using the environment `env_in`.
+        If `s` is None, return None, otherwise return the template expanded version of `s`."""
         if s is None:
             return None
         return self.jinja_expand_str(s, env_in)
 
     def jinja_expand_str(self, s: str, env_in: Union[None, dict] = None) -> str:
-        '''Jinja2 template expand `s` using the environment `env_in`.'''
+        """Jinja2 template expand `s` using the environment `env_in`."""
         env = self.globals.copy()
         if env_in != None:
             env.update(env_in)
         return self.jinja_env.from_string(s).render(env)
 
     def run_tasks(self, tasks: List) -> None:
-        '''Run the given playbook tasks.'''
+        """Run the given playbook tasks."""
         for statement in tasks:
             command = list(statement.keys())[0]
             command_value = statement[command]
@@ -482,18 +492,21 @@ class CommandProcessor:
         self.debug(f"cd({path})")
         os.chdir(path)
 
-    def do_echo(self, _, msg: Union[str, None] = None, stderr: Union[str, None] = None) -> None:
+    def do_echo(
+        self, _, msg: Union[str, None] = None, stderr: Union[str, None] = None
+    ) -> None:
         stderr = self.jinja_expand_str_none(stderr)
         msg = self.jinja_expand_str_none(msg)
         self.debug(f"echo(msg={msg}, stderr={stderr})")
         if stderr is not None:
-            sys.stderr.write(stderr + '\n')
+            sys.stderr.write(stderr + "\n")
         if msg is not None:
             print(msg)
         if stderr is None and msg is None:
             print()
 
     def do_if(self, _, condition: str, tasks: List) -> None:
+        condition = self.jinja_expand_str(condition)
         self.debug(f"if({condition})")
         self.last_if_result = self.evaluate(condition)
         if not self.last_if_result:
@@ -501,6 +514,7 @@ class CommandProcessor:
         self.run_tasks(tasks)
 
     def do_elif(self, _, condition: str, tasks: List) -> None:
+        condition = self.jinja_expand_str(condition)
         self.debug(f"elif({condition})")
         if self.previous_command not in ["if", "elif"]:
             raise ValueError('"elif" can only occur after a "if" or "elif"')
@@ -519,12 +533,18 @@ class CommandProcessor:
             return
         self.run_tasks(tasks)
 
-    def do_exit(self, _, code: Union[int, str] = 0, msg: Union[str, None] = None, stderr: Union[str, None] = None) -> None:
+    def do_exit(
+        self,
+        _,
+        code: Union[int, str] = 0,
+        msg: Union[str, None] = None,
+        stderr: Union[str, None] = None,
+    ) -> None:
         stderr = self.jinja_expand_str_none(stderr)
         msg = self.jinja_expand_str_none(msg)
         self.debug(f"exit({code}, msg={msg}, stderr={stderr})")
         if stderr is not None:
-            sys.stderr.write(stderr + '\n')
+            sys.stderr.write(stderr + "\n")
         if msg is not None:
             print(msg)
         sys.exit(int(code))
@@ -533,14 +553,22 @@ class CommandProcessor:
         time = self.jinja_expand_str(time)
         time_module.sleep(timestr_to_secs(time))
 
+    def do_stat(self, _, path: str, var: Union[str, None] = None) -> None:
+        path = self.jinja_expand_str(path)
+        self.debug(f"stat({path})")
+        stat = os.stat(path)
+        if var:
+            self.globals[var] = stat
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         prog="up",
         description="Run playbooks of actions, typically to set up some sort of environment.",
+        add_help=False,
     )
-    parser.add_argument('--up-debug', action='store_true')
-    parser.add_argument('playbook')
+    parser.add_argument("--up-debug", action="store_true")
+    parser.add_argument("playbook")
     args, remaining_args = parser.parse_known_args()
 
     playbook_file = find_playbook(args.playbook)
@@ -550,5 +578,5 @@ if __name__ == "__main__":
     runner = CommandProcessor(playbook_file.parent, playbook_file.name)
     runner.set_remaining_args(remaining_args)
     if args.up_debug:
-        runner.set('up_debug', True)
+        runner.set("up_debug", True)
     runner.run_tasks(data)
