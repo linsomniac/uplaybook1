@@ -429,6 +429,43 @@ Example:
       foo: "{{key}}"
       path: "{{environ['PATH']}}"
 
+## Jinja/Conditions Environment
+
+The environment that the Jinja2 templating and the "condition" clauses run in have
+the following available:
+
+- environ: a dictionary of the environment variables available, for example:
+  "environ['HOME']".
+- os: The Python "os" module, for things like "os.path.exists()" checks.
+- platform: Platform-specific information, for things like the OS name and version:
+  "os.system == 'Linux'" or "(os.release\_version) > 22"
+
+## Platform Details
+
+The following information is made available to conditions and templates in the
+"platform" variable:
+
+    Linux:
+         arch: x86_64
+         release_codename: jammy
+         release_id: ubuntu
+         os_family: debian
+         release_name: Ubuntu
+         release_version: 22.04
+         system: Linux
+
+    MacOS:
+        arch: arm64
+        release_version: 13.0.1
+        system: Darwin
+
+    Windows:
+        arch: AMD64
+        release_edition: ServerStandard
+        release_name: 10
+        release_version: 10.0.17763
+        system: Windows
+
 ## Fernet Encryption
 
 The Fernet encryption used here was chosen because it is implemented directly in the

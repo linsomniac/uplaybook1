@@ -10,6 +10,9 @@ import shutil
 import re
 import yaml
 import random
+import platform
+import types
+from dataclasses import dataclass
 from collections import OrderedDict
 from typing import Union, Tuple, List, Iterator
 import base64
@@ -147,13 +150,58 @@ def timestr_to_secs(timestr: str) -> int:
     return seconds
 
 
+def platform_info() -> types.SimpleNamespace:
+    """
+    Linux:
+         'arch': 'x86_64',
+         'release_codename': 'jammy',
+         'release_id': 'ubuntu',
+         'os_family': 'debian',
+         'release_name': 'Ubuntu',
+         'release_version': '22.04',
+         'system': 'Linux'
+
+    MacOS:
+        'arch': 'arm64',
+        'release_version': '13.0.1',
+        'system': 'Darwin'
+
+    Windows:
+        'arch': 'AMD64',
+        'release_edition': 'ServerStandard',
+        'release_name': '10',
+        'release_version': '10.0.17763',
+        'system': 'Windows'
+    """
+    env = types.SimpleNamespace()
+    uname = platform.uname()
+    env.system = platform.system()
+    if env.system == "Linux":
+        release = platform.freedesktop_os_release()
+        env.release_name = release["NAME"]
+        env.release_id = release["ID"]
+        env.release_version = release["VERSION_ID"]
+        env.release_like = release["ID_LIKE"]
+        env.release_codename = release["VERSION_CODENAME"]
+    if env.system == "Darwin":
+        macver = platform.mac_ver()
+        env.release_version = macver[0]
+    if env.system == "Windows":
+        env.release_version = uname.version
+        env.release_name = uname.release
+        env.release_edition = platform.win32_edition()
+    env.arch = uname.machine
+
+    return env
+
+
 def generate_salt() -> bytes:
-    '''Generate a random 16 byte salt for fernet encryption.'''
+    """Generate a random 16 byte salt for fernet encryption."""
     return os.urandom(16)
 
 
 def fernet_key(password: bytes, salt: bytes) -> Fernet:
-    '''Create a Fernet encryption object for the given password with the salt.
+    """Create a Fernet encryption object for the given password with the salt.
 
     An "up" Fernet file is 16 random bytes followed by the encrypted data.  For encryption,
     pass in a random salt.  For decryption, read the first 16 bytes of the encrypted file,
@@ -166,7 +214,7 @@ def fernet_key(password: bytes, salt: bytes) -> Fernet:
 
     Returns:
         - Fernet() object for encryption/decryption.
-    '''
+    """
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
@@ -193,7 +241,7 @@ def fernet_decrypt(filename: str, password: bytes) -> bytes:
 
 class CommandProcessor:
     def __init__(self, template_dir: Path, playbook_name: Union[str, Path]) -> None:
-        self.globals = {"environ": os.environ, "os": os}
+        self.globals = {"environ": os.environ, "os": os, "platform": platform_info()}
 
         self.jinja_env = jinja2.Environment()
         self.jinja_env.filters["basename"] = os.path.basename
@@ -575,7 +623,9 @@ class CommandProcessor:
         if register:
             self.globals[register] = stat
 
-    def do_umask(self, _, mask: Union[str, int], register: Union[str, None] = None) -> None:
+    def do_umask(
+        self, _, mask: Union[str, int], register: Union[str, None] = None
+    ) -> None:
         if type(mask) == str:
             mask = self.jinja_expand_str(mask)
             mask = int(mask, 8)
