@@ -12,6 +12,8 @@ import yaml
 import random
 import platform
 import types
+import socket
+import multiprocessing
 from dataclasses import dataclass
 from collections import OrderedDict
 from typing import Union, Tuple, List, Iterator
@@ -191,6 +193,18 @@ def platform_info() -> types.SimpleNamespace:
         env.release_name = uname.release
         env.release_edition = platform.win32_edition()
     env.arch = uname.machine
+    env.cpu_count = multiprocessing.cpu_count()
+    env.fqdn = socket.getfqdn()
+
+    try:
+        import psutil
+        vm = psutil.virtual_memory()
+        env.memory_total = vm.total
+        env.memory_available = vm.available
+        env.memory_used = vm.used
+        env.memory_percent_used = vm.percent
+    except ImportError:
+        pass
 
     return env
 

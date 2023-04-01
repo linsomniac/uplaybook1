@@ -466,6 +466,17 @@ The following information is made available to conditions and templates in the
         release_version: 10.0.17763
         system: Windows
 
+    All Platforms:
+        cpu_count: Number of CPUs.
+        fqdn: Fully qualified domain name of system ("foo.example.com").
+
+    Memory information is available if the "psutil" python module is installed:
+
+        memory_total: Total memory on system (in bytes)
+        memory_available: Available memory
+        memory_used: Memory used
+        memory_percent_used: Percentage of memory used (39.5).
+
 ## Fernet Encryption
 
 The Fernet encryption used here was chosen because it is implemented directly in the
