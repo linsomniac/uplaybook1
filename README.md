@@ -471,7 +471,6 @@ The following information is made available to conditions and templates in the
         fqdn: Fully qualified domain name of system ("foo.example.com").
 
     Memory information is available if the "psutil" python module is installed:
-
         memory_total: Total memory on system (in bytes)
         memory_available: Available memory
         memory_used: Memory used
