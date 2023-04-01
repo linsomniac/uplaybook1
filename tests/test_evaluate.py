@@ -69,22 +69,23 @@ from pathlib import Path
 import os
 from typing import Union
 
+
 class TestEvaluate(unittest.TestCase):
     def test_evaluate(self):
-        cmd = up.CommandProcessor('.', 'up.yml')
+        cmd = up.CommandProcessor(".", "up.yml")
 
         # Test cases with boolean input
         self.assertTrue(cmd.evaluate(True))
         self.assertFalse(cmd.evaluate(False))
-        
+
         # Test cases with string input
         self.assertTrue(cmd.evaluate("3 > 2"))
         self.assertFalse(cmd.evaluate("3 < 2"))
-        cmd.globals['x'] = 6
+        cmd.globals["x"] = 6
         self.assertTrue(cmd.evaluate("x > 5"))
-        cmd.globals['x'] = 4
+        cmd.globals["x"] = 4
         self.assertFalse(cmd.evaluate("x > 5"))
-        
+
         # Test cases with invalid input (should raise exceptions)
         with self.assertRaises(TypeError):
             cmd.evaluate(123)

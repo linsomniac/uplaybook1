@@ -64,24 +64,25 @@ up = import_script_as_module("up", ["./up", "../up"])
 
 import unittest
 
+
 class TestTimestr(unittest.TestCase):
     def test_times(self):
         with self.assertRaises(ValueError):
-            self.assertEqual(up.timestr_to_secs(''), 1)
-        self.assertEqual(up.timestr_to_secs('1'), 1)
-        self.assertEqual(up.timestr_to_secs('27'), 27)
-        self.assertEqual(up.timestr_to_secs('1s'), 1)
-        self.assertEqual(up.timestr_to_secs('1m'), 60)
-        self.assertEqual(up.timestr_to_secs('1h'), 3600)
-        self.assertEqual(up.timestr_to_secs('1h2m'), 3720)
-        self.assertEqual(up.timestr_to_secs('1h2m30s'), 3750)
-        self.assertEqual(up.timestr_to_secs('1h2m30'), 3750)
-        self.assertLessEqual(up.timestr_to_secs('random 1h2m30'), 3750)
-        self.assertLessEqual(up.timestr_to_secs('1h2m30 random'), 3750)
-        self.assertLessEqual(up.timestr_to_secs('random 1'), 1)
-        self.assertLessEqual(up.timestr_to_secs('random 1s'), 1)
-        self.assertLessEqual(up.timestr_to_secs('random 1m'), 60)
+            self.assertEqual(up.timestr_to_secs(""), 1)
+        self.assertEqual(up.timestr_to_secs("1"), 1)
+        self.assertEqual(up.timestr_to_secs("27"), 27)
+        self.assertEqual(up.timestr_to_secs("1s"), 1)
+        self.assertEqual(up.timestr_to_secs("1m"), 60)
+        self.assertEqual(up.timestr_to_secs("1h"), 3600)
+        self.assertEqual(up.timestr_to_secs("1h2m"), 3720)
+        self.assertEqual(up.timestr_to_secs("1h2m30s"), 3750)
+        self.assertEqual(up.timestr_to_secs("1h2m30"), 3750)
+        self.assertLessEqual(up.timestr_to_secs("random 1h2m30"), 3750)
+        self.assertLessEqual(up.timestr_to_secs("1h2m30 random"), 3750)
+        self.assertLessEqual(up.timestr_to_secs("random 1"), 1)
+        self.assertLessEqual(up.timestr_to_secs("random 1s"), 1)
+        self.assertLessEqual(up.timestr_to_secs("random 1m"), 60)
         with self.assertRaises(StopIteration):
             for _ in range(100):
-                if up.timestr_to_secs('random 1m') < 60:
+                if up.timestr_to_secs("random 1m") < 60:
                     raise StopIteration()

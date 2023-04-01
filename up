@@ -14,7 +14,6 @@ import platform
 import types
 import socket
 import multiprocessing
-from dataclasses import dataclass
 from collections import OrderedDict
 from typing import Union, Tuple, List, Iterator
 import base64
@@ -198,6 +197,7 @@ def platform_info() -> types.SimpleNamespace:
 
     try:
         import psutil
+
         vm = psutil.virtual_memory()
         env.memory_total = vm.total
         env.memory_available = vm.available
@@ -282,7 +282,8 @@ class CommandProcessor:
         self, s: Union[str, None], env_in: Union[None, dict] = None
     ) -> Union[str, None]:
         """Jinja2 template expand `s` using the environment `env_in`.
-        If `s` is None, return None, otherwise return the template expanded version of `s`."""
+        If `s` is None, return None, otherwise return the template expanded version of `s`.
+        """
         if s is None:
             return None
         return self.jinja_expand_str(s, env_in)
