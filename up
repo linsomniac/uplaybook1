@@ -412,7 +412,7 @@ class CommandProcessor:
         return results
 
     def encrypt(self, src: str, password: str) -> str:
-        dstfd, dst = tempfile.mkstemp()
+        _, dst = tempfile.mkstemp()
         encrypted_data = fernet_encrypt(src, password.encode("ascii"))
         with open(dst, "wb") as fout:
             fout.write(encrypted_data)
@@ -420,7 +420,7 @@ class CommandProcessor:
         return dst
 
     def decrypt(self, src: str, password: str) -> str:
-        dstfd, dst = tempfile.mkstemp()
+        _, dst = tempfile.mkstemp()
         decrypted_data = fernet_decrypt(src, password.encode("ascii"))
         with open(dst, "wb") as fout:
             fout.write(decrypted_data)
@@ -447,10 +447,10 @@ class CommandProcessor:
     def do_args(self, _, schema) -> None:
         parser = argparse.ArgumentParser(prog=f"up:{self.playbook_name}")
         for arg in schema:
-            kw_args = {
+            kw_args: dict[str, object] = {
                 "type": str,
             }
-            orig_arg_name = arg["name"]
+            # orig_arg_name = arg["name"]
             arg_name = arg["name"].replace("_", "-")
             if "default" in arg:
                 kw_args["dest"] = arg_name
@@ -642,10 +642,10 @@ class CommandProcessor:
         self, _, mask: Union[str, int], register: Union[str, None] = None
     ) -> None:
         if type(mask) == str:
-            mask = self.jinja_expand_str(mask)
+            mask = self.jinja_expand_str(str(mask))
             mask = int(mask, 8)
         self.debug(f"umask({mask:o})")
-        old_mask = os.umask(mask)
+        old_mask = os.umask(int(mask))
         if register:
             self.globals[register] = old_mask
 
