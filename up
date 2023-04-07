@@ -346,6 +346,7 @@ def fernet_decrypt(filename: str, password: bytes) -> bytes:
 class CommandProcessor:
     def __init__(self, template_dir: Path, playbook_name: Union[str, Path]) -> None:
         self.globals = {"environ": os.environ, "os": os, "platform": platform_info()}
+        self.locals = {}
 
         self.jinja_env = jinja2.Environment()
         self.jinja_env.filters["basename"] = os.path.basename
@@ -381,6 +382,7 @@ class CommandProcessor:
     def jinja_expand_str(self, s: str, env_in: Union[None, dict] = None) -> str:
         """Jinja2 template expand `s` using the environment `env_in`."""
         env = self.globals.copy()
+        env.update(self.locals)
         if env_in != None:
             env.update(env_in)
         return self.jinja_env.from_string(s).render(env)
@@ -393,6 +395,10 @@ class CommandProcessor:
             args = statement.copy()
             del args[command]
 
+            if "vars" in args:
+                self.locals = dict(args["vars"])
+                del args["vars"]
+
             try:
                 func = getattr(self, f"do_{command}")
             except AttributeError:
@@ -401,6 +407,7 @@ class CommandProcessor:
             func(command_value, **args)
 
             self.previous_command = command
+            self.locals = {}
 
     def find_file(self, filename: str) -> Path:
         """
@@ -448,8 +455,8 @@ class CommandProcessor:
         string, the function evaluates the boolean expression and returns the result.
 
         The `eval` function is used to evaluate the expression, and the evaluation
-        is performed in the context of the `self.globals` dictionary. Any variables
-        used in the expression should be defined in this dictionary.
+        is performed in the context of the `self.globals` and `self.locals`
+        dictionaries. Any variables used in the expression should be defined in them.
 
         Parameters
         ----------
@@ -483,11 +490,12 @@ class CommandProcessor:
             return False
         if condition is True:
             return True
-        ret = eval(condition, self.globals)
+        ret = eval(condition, self.globals, self.locals)
         return ret
 
     def jinja_expand_dict(self, d: dict) -> dict:
         env = self.globals.copy()
+        env.update(self.locals)
         env.update(d)
         results = {}
         for k, v in d.items():
@@ -673,8 +681,13 @@ class CommandProcessor:
         if stderr is None and msg is None:
             print()
 
+    def do_block(self, _, tasks: List) -> None:
+        self.debug(f"block()")
+        self.run_tasks(tasks)
+
     def do_if(self, _, condition: str, tasks: List) -> None:
-        condition = self.jinja_expand_str(condition)
+        if type(condition) is str:
+            condition = self.jinja_expand_str(condition)
         self.debug(f"if({condition})")
         self.last_if_result = self.evaluate(condition)
         if not self.last_if_result:
@@ -682,7 +695,8 @@ class CommandProcessor:
         self.run_tasks(tasks)
 
     def do_elif(self, _, condition: str, tasks: List) -> None:
-        condition = self.jinja_expand_str(condition)
+        if type(condition) is str:
+            condition = self.jinja_expand_str(condition)
         self.debug(f"elif({condition})")
         if self.previous_command not in ["if", "elif"]:
             raise ValueError('"elif" can only occur after a "if" or "elif"')

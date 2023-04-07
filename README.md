@@ -156,6 +156,38 @@ The above:
 - The shadow entry is decrypted.
 - The systemd entry specifies a different source location.
 
+## Blocks
+
+Blocks are a simple way of combining a set of tasks, for example if you wanted a
+couple of tasks to run with a loop.
+
+For example:
+
+    - block;
+      tasks:
+        - copy:
+          src: "{{basename}}"
+          dst: "{{basename}}.fernet"
+          encrypt_password: "{{password}}"
+        - if:
+          condition: remove
+          tasks:
+            - rm:
+              path: "{{basename}}"
+    loop:
+      - vars:
+          basename: file1
+      - vars:
+          basename: file2
+
+## Task Vars
+
+Tasks (including "if" and "block", etc..) can have "vars" on them which
+create variables local to that task.  This is primarily useful for loops or blocks
+(or blocks with loops).
+
+For an example, see the example in the "Blocks" section above.
+
 ## Playbook Search Path
 
 The playbook will be searched for using a search path, which can be specified
@@ -205,6 +237,10 @@ Example:
       up_debug: true
 
 ## Available Tasks
+
+### block
+
+See the "Blocks" section above.
 
 ### cd
 
