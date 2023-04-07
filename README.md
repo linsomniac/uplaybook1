@@ -185,8 +185,8 @@ current working directory.  This allows for playbooks to operate on files in the
 you are running from.
 
 Templates and files are searched for in a colon-separated path, either gotten from the
-UP\_FILE\_PATH or the default of ".:./files".  A "." in the file path is
-relative to the directory that contains the playbook file.
+UP\_FILE\_PATH or the default of ".:...:.../files".  "..." at the beginning of the
+file path refers to the directory that contains the playbook file.
 
 The default search path looks for templates/files in:
 

@@ -407,7 +407,7 @@ class CommandProcessor:
         Finds and returns the path of a template/file.
 
         This function uses a colon-separated search path, either gotten from the
-        UP_TEMPLATE_PATH environment variable or the default.  "." specified in
+        UP_FILES_PATH environment variable or the default.  "..." specified in
         the search path is relative to the directory the playbook is found in.
 
         Returns:
@@ -416,21 +416,16 @@ class CommandProcessor:
         Raises:
         FileNotFoundError: If the template file is not found in the search paths.
         """
-        search_path = os.environ.get("UP_FILES_PATH", ".:./files")
-
-        #  check the given name first before searching
-        p = Path(filename)
-        if p.exists():
-            return p
+        search_path = os.environ.get("UP_FILES_PATH", ".:...:.../files")
 
         for directory in search_path.split(":"):
-            if directory == ".":
+            if directory == "...":
                 p = self.template_dir.joinpath(filename)
                 if p.exists():
                     return p
                 continue
-            if directory.startswith("./"):
-                p = self.template_dir.joinpath(directory[2:]).joinpath(filename)
+            if directory.startswith(".../"):
+                p = self.template_dir.joinpath(directory[4:]).joinpath(filename)
                 if p.exists():
                     return p
                 continue
