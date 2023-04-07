@@ -418,6 +418,11 @@ class CommandProcessor:
         """
         search_path = os.environ.get("UP_FILES_PATH", ".:./files")
 
+        #  check the given name first before searching
+        p = Path(filename)
+        if p.exists():
+            return p
+
         for directory in search_path.split(":"):
             if directory == ".":
                 p = self.template_dir.joinpath(filename)
@@ -435,7 +440,7 @@ class CommandProcessor:
                 return p
 
         raise FileNotFoundError(
-            f"Could not find template {filename}, searched in {search_path}"
+            f"Could not find file {filename}, searched in {search_path}"
         )
 
     def evaluate(self, condition: Union[str, bool]) -> bool:

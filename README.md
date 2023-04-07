@@ -180,6 +180,10 @@ To find a playbook "foo", each directory in the search path is consulted, lookin
 uPlaybook does not use different directories to store files and templates, like
 Ansible does.
 
+It will first look to see if the specified file is found using the given name and the
+current working directory.  This allows for playbooks to operate on files in the path
+you are running from.
+
 Templates and files are searched for in a colon-separated path, either gotten from the
 UP\_FILE\_PATH or the default of ".:./files".  A "." in the file path is
 relative to the directory that contains the playbook file.
