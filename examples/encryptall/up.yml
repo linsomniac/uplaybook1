@@ -1,0 +1,31 @@
+---
+- args:
+  schema:
+    - name: password
+      description: Password for the encrypted files.
+    - name: remove
+      type: bool
+      default: true
+      description: Whether to remove the unencrypted files when done.
+- block:
+  tasks:
+    - echo:
+      msg: "Encrypting {{basename}}..."
+    - copy:
+      src: "{{basename}}"
+      dst: "{{basename}}.fernet"
+      encrypt_password: "{{password}}"
+    - if:
+      condition: "remove"
+      tasks:
+        - echo:
+          msg: "...Removing {{basename}}"
+        - rm:
+          path: "{{basename}}"
+  loop:
+    - vars:
+        basename: file1
+    - vars:
+        basename: file2
+    - vars:
+        basename: file3

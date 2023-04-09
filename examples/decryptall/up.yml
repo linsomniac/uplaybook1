@@ -1,0 +1,20 @@
+---
+- args:
+  schema:
+    - name: password
+      description: Password for the encrypted files.
+- block:
+  tasks:
+    - echo:
+      msg: "Decrypting {{basename}}..."
+    - copy:
+      src: "{{basename}}.fernet"
+      dst: "{{basename}}"
+      decrypt_password: "{{password}}"
+  loop:
+    - vars:
+        basename: file1
+    - vars:
+        basename: file2
+    - vars:
+        basename: file3
