@@ -175,6 +175,8 @@ For example:
             - rm:
               path: "{{basename}}"
     loop:
+      #  note: 2 indentations needed under vars
+      #  (YAML treats "basename" as a peer of "vars" without 2 indentation levels)
       - vars:
           basename: file1
       - vars:
