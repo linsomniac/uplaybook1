@@ -257,6 +257,25 @@ Example:
     - cd:
       path: /tmp/foo
 
+### chmod
+
+Change the permissions on a filesystem path.
+
+Arguments:
+
+- mode: The mode for the file, either by numeric (0755), octal string ("755"), or symbolic
+  string ("a=rx,u+w").  (templated)
+- path: Path to the filesystem object to set permissions on.  (templated)
+- recurse: Whether to recursively set permissions on the filesystem objects under
+  `path` if it is a directory.  (optional)
+
+  Example:
+
+      - chmod:
+        path: /tmp/foo
+        mode: a=rX,u+w
+        recurse: true
+
 ### copy
 
 Copy a (possibly encrypted) file verbatim.

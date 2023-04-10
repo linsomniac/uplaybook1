@@ -801,8 +801,12 @@ class CommandProcessor:
         with open(dst, "w") as fout:
             fout.write(data)
 
-    def do_chmod(self, _, mode: Union[str, int], path: str, recurse: bool) -> None:
+    def do_chmod(
+        self, _, mode: Union[str, int], path: str, recurse: bool = False
+    ) -> None:
         path = self.jinja_expand_str(path)
+        if type(mode) is str:
+            mode = self.jinja_expand_str(mode)
         self.debug(f"chmod({mode}, {path})")
 
         chmod(mode, path, recurse=recurse)
