@@ -708,9 +708,9 @@ class CommandProcessor:
 
         return src, dst
 
-    def do_args(self, _, schema) -> None:
+    def do_args(self, _, options) -> None:
         parser = argparse.ArgumentParser(prog=f"up:{self.playbook_name}")
-        for arg in schema:
+        for arg in options:
             kw_args: dict[str, object] = {
                 "type": str,
             }
@@ -737,7 +737,7 @@ class CommandProcessor:
         self.set_remaining_args(remaining)
 
         args_vars = vars(args)
-        for arg in schema:
+        for arg in options:
             self.globals[arg["name"]] = args_vars[arg["name"].replace("_", "-")]
 
     def do_vars(self, _, **kv) -> None:

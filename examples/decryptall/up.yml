@@ -1,6 +1,6 @@
 ---
 - args:
-  schema:
+  options:
     - name: password
       description: Password for the encrypted files.
 - block:

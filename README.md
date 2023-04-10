@@ -37,7 +37,7 @@ From the "examples/encryptall/up.yml" example:
 
     ---
     - args:
-      schema:
+      options:
         - name: password
           description: Password for the encrypted files.
         - name: remove
@@ -80,7 +80,7 @@ example:
 
 ```yaml
 - args:
-  schema:
+  options:
     #  require the name of the role to create
     - name: role_name
       description: "The name of the role directory to create."
@@ -99,7 +99,7 @@ Given the above in a playbook called "makerole", here are some example runs:
     $ ./up makerole foo   #  Create a role "foo" with handlers
     $ ./up makerole foo --no-add-handlers  #  And without
 
-The "schema" can contain elements with the following values:
+The "options" can contain elements with the following values:
 
 - name (Required): The name of the argument, this is the name used to access the value in
   templating, so it must be a valid Python identifier (no hyphens, for example), and
