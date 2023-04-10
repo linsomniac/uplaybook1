@@ -3,12 +3,14 @@
 This is an extremely small, yaml-driven tool for doing simple file deployment and
 templating sorts of tasks.  It only requires Python and a couple of libraries.
 
-I implemented it primarily to deploy encrypted secrets and config files to a group
-of Windows machines.  Python was available but Ansible failed to run.
+uPlaybook can do cookiecutter-like tasks: populating projects or running tasks, and
+has prompts for filling in missing information, and a search path so that
+project-specific playbooks or user-defined playbooks and templates can be used simply
+from the command-line.  `up new-project --name foo --type extended`
 
 While uPlaybook provides many shell-like commands ("tasks" in uPlaybook), it has the
-benefit of a rich templating language to manipulate placed files, and can also
-decrypt files that contain secrets.
+benefit of a rich templating language to manipulate placed files, and can also handle
+encrypted files.
 
 My initial use case was much like what Ansible solves: a way to deploy control and
 configuration files, including passwords and ssh keys, during new machine deployment.
@@ -31,66 +33,45 @@ For example, on Ubuntu: apt install python3 python3-cryptography python3-yaml py
 
 ## Examples
 
-Given a "exampleplaybook.yaml" that looks like this:
+From the "examples/encryptall/up.yml" example:
 
     ---
-    #  Most values below can use jinja2 templating syntax
-    - vars:
-      #  pull the suffix from the environment $EXAMPLE_SUFFIX, or empty string if not set
-      suffix: "{{environ['EXAMPLE_SUFFIX'] | default('')}}"
-      destdir: "/tmp/foo{{suffix}}"
-      password: foobar
-    
-    #  Remove directory
-    - rm:
-      path: "{{destdir}}"
-      recursive: true
-    #  List directory
-    - run:
-      command: "ls -ld {{destdir}}"
-    #  Create directory
-    - mkdir:
-      path: "{{destdir}}"
-      skip: if_exists
-    #  Make multiple directories via "loop"
-    - mkdir:
-      loop:
-        - path: "{{destdir}}/a"
-        - path: "{{destdir}}/b"
-        - path: "{{destdir}}/c"
-    #  Copy an encrypted file
-    - copy:
-      src: foo.fernet
-      dst: "{{destdir}}/bar"
-      skip: if_exists
-      decrypt_password: "{{password}}"
-    #  Template a file to destination
-    - template:
-      src: foo.j2
-      dst: "{{destdir}}/foo-templated"
-      skip: if_exists
-    #  Change to directory
-    - cd:
-      path: "{{destdir}}"
-    - run:
-      command: "ls -ld"
-    - if:
-      condition: "not os.path.exists('foo')"
+    - args:
+      schema:
+        - name: password
+          description: Password for the encrypted files.
+        - name: remove
+          type: bool
+          default: true
+          description: Whether to remove the unencrypted files when done.
+    - block:
       tasks:
-        - mkdir:
-          path: foo
-    
-You can run the test by first encrypting a file:
+        - echo:
+          msg: "Encrypting {{basename}}..."
+        - copy:
+          src: "{{basename}}"
+          dst: "{{basename}}.fernet"
+          encrypt_password: "{{password}}"
+        - if:
+          condition: "remove"
+          tasks:
+            - echo:
+              msg: "...Removing {{basename}}"
+            - rm:
+              path: "{{basename}}"
+      loop:
+        - vars:
+            basename: file1
+        - vars:
+            basename: file2
+        - vars:
+            basename: file3
 
-    date >foo.j2
-    ./fernetencrypt foobar foo.j2 foo.fernet
+The above playbook, if put in ".uplaybooks/encryptall/up.yml" can be run as:
+`up encryptall --no-remove <PASSWORD>" to encrypt the listed files, and not remove
+the source files.
 
-Then run "up":
-
-    up exampleplaybook.yaml
-
-NOTE: The example playbook includes references to several templates that are not
-created above, so it will error out if they do not exist.
+See "examples" directory for more examples.
 
 ## Playbook Arguments
 
