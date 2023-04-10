@@ -125,7 +125,7 @@ def timestr_to_secs(timestr: str) -> int:
     Convert a time string to the number of seconds it represents.
     """
     if not timestr:
-        raise ValueError(f"Time string cannot be empty")
+        raise ValueError("Time string cannot be empty")
 
     rx = (
         r"^((?P<random>random)\s+)?((?P<days>\d+)(d|days?)\s*)?((?P<hours>\d+)"
@@ -549,7 +549,7 @@ class CommandProcessor:
         """Jinja2 template expand `s` using the environment `env_in`."""
         env = self.globals.copy()
         env.update(self.locals())
-        if env_in != None:
+        if env_in is not None:
             env.update(env_in)
         return self.jinja_env.from_string(s).render(env)
 
@@ -861,7 +861,7 @@ class CommandProcessor:
             print()
 
     def do_block(self, _, tasks: List) -> None:
-        self.debug(f"block()")
+        self.debug("block()")
         self.run_tasks(tasks)
 
     def do_if(self, _, condition: str, tasks: List) -> None:
@@ -887,7 +887,7 @@ class CommandProcessor:
         self.run_tasks(tasks)
 
     def do_else(self, _, tasks: List) -> None:
-        self.debug(f"elif()")
+        self.debug("elif()")
         if self.previous_command not in ["if", "elif"]:
             raise ValueError('"else" can only occur after a "if" or "elif"')
         if self.last_if_result:
