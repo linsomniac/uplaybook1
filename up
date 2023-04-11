@@ -754,6 +754,7 @@ class CommandProcessor:
         skip: bool = False,
         decrypt_password: Union[None, str] = None,
         encrypt_password: Union[None, str] = None,
+        mode: Union[None, int, str] = None,
     ) -> None:
         env = {"src": src, "dst": dst}
         src = self.jinja_expand_str(src, env)
@@ -772,6 +773,9 @@ class CommandProcessor:
 
         shutil.copy(src, dst)
 
+        if mode:
+            self.do_chmod(None, mode, dst)
+
     def do_template(
         self,
         _,
@@ -780,6 +784,7 @@ class CommandProcessor:
         skip: bool = False,
         decrypt_password: Union[None, str] = None,
         encrypt_password: Union[None, str] = None,
+        mode: Union[None, int, str] = None,
     ) -> None:
         env = {"src": src, "dst": dst}
         src = self.jinja_expand_str(src, env)
@@ -800,6 +805,9 @@ class CommandProcessor:
             data = self.jinja_expand_str(fin.read(), env)
         with open(dst, "w") as fout:
             fout.write(data)
+
+        if mode:
+            self.do_chmod(None, mode, dst)
 
     def do_chmod(
         self, _, mode: Union[str, int], path: str, recurse: bool = False

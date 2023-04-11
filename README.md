@@ -265,10 +265,11 @@ Arguments:
 
 - src: Filename of the source file (template expanded).
 - dst: Filename to copy the file to (template expanded).
-- skip: If "if\_exists" the copy will be skipped if the destination exists.
-    Otherwise the copy will always be done.
 - decrypt\_password: A password to decrypt "src" with when copying.
 - encrypt\_password: A password to encrypt "src" with when copying.
+- mode: A mode (as with `chmod`) the `dat` file is set to.
+- skip: If "if\_exists" the copy will be skipped if the destination exists.
+    Otherwise the copy will always be done.
 
 Example:
 
@@ -427,10 +428,11 @@ Arguments:
 
 - src: Filename of the source file (template expanded).
 - dst: Filename to copy the file to (template expanded).
-- skip: If "if\_exists" the copy will be skipped if the destination exists.
-    Otherwise the copy will always be done.
 - decrypt\_password: A password to decrypt "src" with when copying.
 - encrypt\_password: A password to encrypt "src" with when copying.
+- mode: A mode (as with `chmod`) the `dat` file is set to.
+- skip: If "if\_exists" the copy will be skipped if the destination exists.
+    Otherwise the copy will always be done.
 
 Example:
 
