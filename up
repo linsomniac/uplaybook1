@@ -665,7 +665,7 @@ class CommandProcessor:
         env.update(d)
         results = {}
         for k, v in d.items():
-            if type(v) is not type(str):
+            if type(v) is not str:
                 results[k] = v
                 env[k] = str(v)
                 continue
