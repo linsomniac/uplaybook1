@@ -16,7 +16,7 @@ import socket
 import stat
 import multiprocessing
 from collections import OrderedDict
-from typing import Union, Tuple, List, Iterator
+from typing import Union, Tuple, List, Iterator, IO
 import base64
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
@@ -150,6 +150,84 @@ def timestr_to_secs(timestr: str) -> int:
     if groups["random"] is not None or groups["random2"] is not None:
         seconds = random.randint(1, seconds)
     return seconds
+
+
+#  forklifting fernet ===============
+
+encrypt_blocksize = 40960
+decrypt_blocksize = 54712
+salt_file_size = 20
+magic = "#UF1#"
+
+
+def read_fernet_header(fp: IO[bytes], raw: bool = False) -> bytes:
+    "Read a fernet header, return the salt"
+    length = salt_file_size + len(magic)
+    if raw:
+        length = 16
+
+    data = fp.read(length)
+    if raw:
+        return data
+
+    if not raw:
+        if data[-len(magic) :].decode("ascii") != magic:
+            raise ValueError("This does not look like a fernet file")
+
+    return base64.b85decode(data[:salt_file_size])
+
+
+def fernet_encrypt(
+    input_file: str, output_file: str, password: str, raw: bool = False
+) -> None:
+    salt = os.urandom(16)
+
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=960000,
+    )
+    key = base64.urlsafe_b64encode(kdf.derive(password.encode("ascii")))
+    f = Fernet(key)
+
+    with open(input_file, "rb") as infp, open(output_file, "wb") as outfp:
+        if raw:
+            outfp.write(salt)
+        else:
+            outfp.write(base64.b85encode(salt))
+            outfp.write(magic.encode("ascii"))
+
+        while True:
+            data = infp.read(encrypt_blocksize)
+            if not data:
+                break
+            outfp.write(f.encrypt(data))
+
+
+def fernet_decrypt(
+    input_file: str, output_file: str, password: str, raw: bool = False
+) -> None:
+    with open(input_file, "rb") as infp, open(output_file, "wb") as outfp:
+        salt = read_fernet_header(infp, raw)
+
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=salt,
+            iterations=960000,
+        )
+        key = base64.urlsafe_b64encode(kdf.derive(password.encode("ascii")))
+        f = Fernet(key)
+
+        while True:
+            data = infp.read(decrypt_blocksize)
+            if not data:
+                break
+            outfp.write(f.decrypt(data))
+
+
+#  END forklifting fernet ===============
 
 
 #  forklifting symbolicmode ===============
@@ -458,50 +536,6 @@ def platform_info() -> types.SimpleNamespace:
     return env
 
 
-def generate_salt() -> bytes:
-    """Generate a random 16 byte salt for fernet encryption."""
-    return os.urandom(16)
-
-
-def fernet_key(password: bytes, salt: bytes) -> Fernet:
-    """Create a Fernet encryption object for the given password with the salt.
-
-    An "up" Fernet file is 16 random bytes followed by the encrypted data.  For encryption,
-    pass in a random salt.  For decryption, read the first 16 bytes of the encrypted file,
-    and pass that in here as the salt, then use the returned object to decrypt the rest of
-    the file.
-
-    Arguments:
-        - password: The password for de/encryption.
-        - salt: 16 bytes of salt.
-
-    Returns:
-        - Fernet() object for encryption/decryption.
-    """
-    kdf = PBKDF2HMAC(
-        algorithm=hashes.SHA256(),
-        length=32,
-        salt=salt,
-        iterations=960000,
-    )
-    key = base64.urlsafe_b64encode(kdf.derive(password))
-    return Fernet(key)
-
-
-def fernet_encrypt(filename: str, password: bytes) -> bytes:
-    salt = generate_salt()
-    f = fernet_key(password, salt)
-    with open(filename, "rb") as fp:
-        return salt + f.encrypt(fp.read())
-
-
-def fernet_decrypt(filename: str, password: bytes) -> bytes:
-    with open(filename, "rb") as fp:
-        salt = fp.read(16)
-        f = fernet_key(password, salt)
-        return f.decrypt(fp.read())
-
-
 class CommandProcessor:
     def __init__(self, template_dir: Path, playbook_name: Union[str, Path]) -> None:
         self.globals = {"environ": os.environ, "os": os, "platform": platform_info()}
@@ -677,18 +711,12 @@ class CommandProcessor:
 
     def encrypt(self, src: str, password: str) -> str:
         _, dst = tempfile.mkstemp()
-        encrypted_data = fernet_encrypt(src, password.encode("ascii"))
-        with open(dst, "wb") as fout:
-            fout.write(encrypted_data)
-
+        fernet_encrypt(src, dst, password)
         return dst
 
     def decrypt(self, src: str, password: str) -> str:
         _, dst = tempfile.mkstemp()
-        decrypted_data = fernet_decrypt(src, password.encode("ascii"))
-        with open(dst, "wb") as fout:
-            fout.write(decrypted_data)
-
+        fernet_decrypt(src, dst, password)
         return dst
 
     def decrypt_or_decrypt_args(
