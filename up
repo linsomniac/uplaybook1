@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+#
+#  This is an extremely small, yaml-driven tool for doing simple file deployment and
+#  templating sorts of tasks. It only requires Python and a couple of libraries.
+#
+#  Written by Sean Reifschneider, 2023
+#  https://github.com/linsomniac/uplaybook
+#  CC0 1.0 Universal, see LICENSE file for more information.
 
 
 import sys
