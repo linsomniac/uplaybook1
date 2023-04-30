@@ -7,7 +7,6 @@
 #  https://github.com/linsomniac/uplaybook
 #  CC0 1.0 Universal, see LICENSE file for more information.
 
-
 import sys
 import os
 import jinja2
