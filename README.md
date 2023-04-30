@@ -75,10 +75,17 @@ See "examples" directory for more examples.
 
 ## Playbook Arguments
 
-User-supplied arguments can be specified in an "args" section of the playbook.  For
-example:
+User-supplied arguments can be specified in an "args" section of the playbook.
+
+This can then produce both command-line arguments the user can provide on the CLI, or
+the questions can be prompted from the user (via the "--up-ask" CLI argument or the
+"up_ask: true" variable in a "vars" section of the playbook.
+
+For example:
 
 ```yaml
+- vars:
+  up-ask: true
 - args:
   options:
     #  require the name of the role to create

@@ -158,6 +158,51 @@ def timestr_to_secs(timestr: str) -> int:
     return seconds
 
 
+class SimplePrompt:
+    """Fill in the "args" by prompting the user for values."""
+
+    def __init__(self, arg: dict[str, object], globals: dict[str, str]):
+        prompt_with: dict[str, object] = {
+            "bool": self.ask_bool,
+            "str": self.ask_str,
+        }
+        default = globals[arg["name"]]
+
+        globals[arg["name"]] = prompt_with[arg["type"]](arg, default)
+
+    def make_prompt(self, arg: dict[str, object], default: object) -> str:
+        "Create a prompt string, including default value and line break if too long"
+        prompt = f"{arg['label']}[{default}]"
+        if len(prompt) + len(str(default)) > 70:
+            prompt = prompt + "\n> "
+        else:
+            prompt += ": "
+        return prompt
+
+    def ask_bool(self, arg: dict[str, object], default: bool) -> bool:
+        "Ask the user for a boolean value"
+        default_str = {True: "y", False: "n"}.get(default, default)
+
+        prompt = self.make_prompt(arg, default_str)
+        while True:
+            val = input(prompt).strip()
+            if val == "":
+                return default
+            if val == "y" or val == "yes":
+                return True
+            if val == "n" or val == "no":
+                return False
+            print("Invalid choice, expected y/n.")
+
+    def ask_str(self, arg: dict[str, object], default: str) -> str:
+        "Ask the user for a string value"
+        prompt = self.make_prompt(arg, default)
+        val = input(prompt)
+        if val.strip() == "":
+            return default
+        return val
+
+
 #  forklifting fernet ===============
 
 encrypt_blocksize = 40960
@@ -742,23 +787,36 @@ class CommandProcessor:
 
         return src, dst
 
+    def ask(self, options: dict[str, str]) -> None:
+        """Ask the user for values for the arguments"""
+        while True:
+            for arg in options:
+                SimplePrompt(arg, self.globals)
+
+            ok = input("Do you want to revise any answers above?  [Y/n] ").strip()
+            if ok in ["no", "n"]:
+                break
+
     def do_args(self, _, options) -> None:
         parser = argparse.ArgumentParser(prog=f"up:{self.playbook_name}")
+        name_mapping: dict[str, str] = {}
         for arg in options:
             kw_args: dict[str, object] = {
                 "type": str,
             }
             # orig_arg_name = arg["name"]
             arg_name = arg["name"].replace("_", "-")
+            name_mapping[arg["name"]] = arg["name"]
             if "default" in arg:
-                kw_args["dest"] = arg_name
+                kw_args["dest"] = arg["name"]
                 arg_name = "--" + arg_name
                 kw_args["default"] = arg["default"]
-            #  @@@ Can query from user by adding the following:
-            #  @@@ And then looking for missing arguments not in "args" at the end
-            # else:
-            #    arg_name = '--' + arg_name
-            #    kw_args['default'] = argparse.SUPPRESS
+            elif self.globals["up_ask"]:
+                kw_args["dest"] = arg["name"]
+                arg_name = "--" + arg_name
+                kw_args["default"] = ""
+            else:
+                name_mapping[arg["name"]] = arg_name
             if "description" in arg:
                 kw_args["help"] = arg["description"]
             if "type" in arg:
@@ -772,7 +830,10 @@ class CommandProcessor:
 
         args_vars = vars(args)
         for arg in options:
-            self.globals[arg["name"]] = args_vars[arg["name"].replace("_", "-")]
+            self.globals[arg["name"]] = args_vars[name_mapping[arg["name"]]]
+
+        if self.globals["up_ask"]:
+            self.ask(options)
 
     def do_vars(self, _, **kv) -> None:
         self.globals.update(self.jinja_expand_dict(kv))
@@ -981,7 +1042,16 @@ if __name__ == "__main__":
         description="Run playbooks of actions, typically to set up some sort of environment.",
         add_help=False,
     )
-    parser.add_argument("--up-debug", action="store_true")
+    parser.add_argument(
+        "--up-debug",
+        action="store_true",
+        help="Display additional debugging information during playbook run.",
+    )
+    parser.add_argument(
+        "--up-ask",
+        action="store_true",
+        help="Interactively ask user for missing playbook arguments",
+    )
     parser.add_argument("playbook")
     args, remaining_args = parser.parse_known_args()
 
@@ -991,6 +1061,7 @@ if __name__ == "__main__":
     data = unroll_loops(data)
     runner = CommandProcessor(playbook_file.parent, playbook_file.name)
     runner.set_remaining_args(remaining_args)
+    runner.set("up_ask", args.up_ask)
     if args.up_debug:
         runner.set("up_debug", True)
     runner.run_tasks(data)
