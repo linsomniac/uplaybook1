@@ -23,6 +23,7 @@ configuration files, including passwords and ssh keys, during new machine deploy
 - Environment variables are brought into template namepsace.
 - Helpers for fernet encrypt/decrypt.
 - Good command-line argument handling.
+- Can ask the user for playbook options via "--up-ask" or "up_ask: true" in vars.
 
 ## Requirements
 
