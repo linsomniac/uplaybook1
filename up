@@ -21,8 +21,9 @@ import types
 import socket
 import stat
 import multiprocessing
-from collections import OrderedDict
-from typing import Union, Tuple, List, Iterator, IO
+import itertools
+from collections import OrderedDict, namedtuple
+from typing import Union, Tuple, List, Iterator, IO, Dict
 import base64
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
@@ -32,46 +33,101 @@ import argparse
 import time as time_module
 
 
-def find_playbook(playbookname: str) -> Path:
+PlaybookInfo = namedtuple("PlaybookInfo", ["name", "directory", "playbook_file"])
+
+
+def get_playbook_search_paths() -> List[Path]:
     """
-    Finds and returns the path of a specified playbook file.
-
-    Searches for a playbook file with the given name in predefined directories
-    and with specific extensions (.yaml, .yml, or no extension). If the file is
-    inside a directory, it searches for 'playbook' files with the same extensions
-    within. The UP_PLAYBOOK_PATH environment variable can be used to set a custom
-    search path.
-
-    Args:
-    playbookname (str): The name of the playbook file to search for.
+    Get the playbook search path (either the default or from the environment)
+    and return an iterable of the path objects.
 
     Returns:
-    Path: The path of the found playbook file.
-
-    Raises:
-    FileNotFoundError: If the playbook file is not found in the search paths."""
+        List[Paths] for the list of locations to look for playbooks."""
 
     search_path = os.environ.get(
         "UP_PLAYBOOK_PATH",
         ".:.uplaybooks:~/.config/uplaybook/books:~/.config/uplaybook",
     )
-    playbook_paths = [
-        Path(x).expanduser().joinpath(playbookname) for x in search_path.split(":")
-    ]
+    return [Path(x).expanduser().joinpath(".") for x in search_path.split(":")]
 
-    def playbook_combinations(paths: List[Path]) -> Iterator[Path]:
-        for pb in paths:
-            yield pb.joinpath("up.yml")  #  pb/up.yml
-            yield pb  #  pb
-            yield pb.parent.joinpath(pb.name + ".yml")  #  pb.yml
 
-    for pb in playbook_combinations(playbook_paths):
-        if pb.exists():
-            return pb
+def get_playbook_docs(tasks: List) -> Dict:
+    """Given a loaded playbook, return the documentation or an empty dict if none.
 
+    Example:
+        docs = get_playbook_docs(playbook_tasks)
+        print(f"Description: {docs.get('desc')}")
+
+    Args:
+        tasks: An OrderedDict playbook.
+
+    Returns:
+        The documentation dictionary (empty if none found)."""
+    for statement in tasks:
+        command = list(statement.keys())[0]
+        if command != "docs":
+            continue
+        command_value = statement[command]
+        args = statement.copy()
+        del args[command]
+        return args
+    return {}
+
+
+def list_playbooks() -> Iterator[PlaybookInfo]:
+    """
+    Walk the playbook path and return a list of available playbooks.
+    Playbook files take precedence over playbook/up.yml.  Sorted by
+    playbook name within each component of the search path.
+
+    Returns:
+
+    """
+    for playbook_path in get_playbook_search_paths():
+        possible_playbooks = sorted(
+            itertools.chain(
+                playbook_path.glob("*.yml"), playbook_path.glob("*/up.yml")
+            ),
+            key=lambda x: x.name,
+        )
+        for playbook_file in possible_playbooks:
+            if playbook_file.exists():
+                directory = playbook_file.parent
+                if playbook_file.name == "up.yml" and directory.as_posix() != ".":
+                    name = directory.name
+                else:
+                    name = playbook_file.name
+                yield PlaybookInfo(name, directory, playbook_file)
+
+
+def find_playbook(playbookname: str) -> Path:
+    """
+    Finds and returns the path of a specified playbook file.
+
+    Search for the playbook in the UP_PLAYBOOK_PATH environment variable,
+    or a default if not specified.
+
+    Args:
+        playbookname (str): The name of the playbook file to search for.
+
+    Returns:
+        Path: The path of the found playbook file.
+
+    Raises:
+        FileNotFoundError: If the playbook file is not found in the search paths."""
+
+    for playbook in list_playbooks():
+        if playbook.name == playbookname or (
+            playbook.name.endswith(".yml")
+            and not playbookname.endswith(".yml")
+            and playbook.name == (playbookname + ".yml")
+        ):
+            return playbook.playbook_file
+
+    searchpath = get_playbook_search_paths()
     raise FileNotFoundError(
         f"Unable to locate a playbook by the name of {playbookname},"
-        f" searched in path {search_path}"
+        f" searched in path {searchpath}."
     )
 
 
@@ -674,7 +730,7 @@ class CommandProcessor:
         Raises:
         FileNotFoundError: If the template file is not found in the search paths.
         """
-        search_path = os.environ.get("UP_FILES_PATH", ".:...:.../files")
+        search_path = os.environ.get("UP_FILES_PATH", "...:.../files:.")
 
         for directory in search_path.split(":"):
             if directory == "...":
@@ -950,6 +1006,9 @@ class CommandProcessor:
         self.debug(f"cd({path})")
         os.chdir(path)
 
+    def do_docs(self, _, desc: str) -> None:
+        pass
+
     def do_echo(
         self, _, msg: Union[str, None] = None, stderr: Union[str, None] = None
     ) -> None:
@@ -1036,11 +1095,44 @@ class CommandProcessor:
             self.globals[register] = old_mask
 
 
+class UpArgumentParser(argparse.ArgumentParser):
+    """Wrapper so that "up", when run with no arguments, lists available playbooks."""
+
+    def print_usage(self, file=None):
+        super().print_usage(file)
+        self.list_playbooks()
+
+    def print_help(self, file=None):
+        super().print_help(file)
+        self.list_playbooks()
+
+    def list_playbooks(self):
+        print()
+        print("Available playbooks:")
+        playbooks_seen = set()
+        for playbook in list_playbooks():
+            tasks = ordered_load(playbook.playbook_file.open("r"), yaml.SafeLoader)
+            duplicate = (
+                " *HIDDEN BY PREVIOUS PLAYBOOK*"
+                if playbook.name in playbooks_seen
+                else ""
+            )
+            playbooks_seen.add(playbook.name)
+            print(f"  - {playbook.name} ({playbook.directory}{duplicate})")
+            docs = get_playbook_docs(tasks)
+
+            desc = docs.get("desc")
+
+            if desc:
+                print(f"      {desc}")
+        print()
+
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
+    parser = UpArgumentParser(
         prog="up",
         description="Run playbooks of actions, typically to set up some sort of environment.",
-        add_help=False,
+        add_help=True,
     )
     parser.add_argument(
         "--up-debug",

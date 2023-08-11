@@ -37,6 +37,8 @@ For example, on Ubuntu: apt install python3 python3-cryptography python3-yaml py
 From the "examples/encryptall/up.yml" example:
 
     ---
+    - docs:
+      desc: Encrypt all the managed files.
     - args:
       options:
         - name: password
@@ -194,27 +196,21 @@ where a package can bundle up templates and other files into a single location.
 To find a playbook "foo", each directory in the search path is consulted, looking for:
 
 - User expansion is done if "~" or "~user" are in the path.
-- "foo" as a drectory with a "up.yml" file in it.
-- "foo" is a file.
 - "foo.yml" is a file.
+- "foo" is a file.
 
 ## File and Template Search Path
 
-uPlaybook does not use different directories to store files and templates, like
-Ansible does.
-
-It will first look to see if the specified file is found using the given name and the
-current working directory.  This allows for playbooks to operate on files in the path
-you are running from.
-
-Templates and files are searched for in a colon-separated path, either gotten from the
-UP\_FILE\_PATH or the default of ".:...:.../files".  "..." at the beginning of the
-file path refers to the directory that contains the playbook file.
+To find files and templates uPlaybook uses the "UP\_FILE\_PATH" environment variable
+(with a default of "...:.../files:.").  Each component is separated by a ":", and
+"..." at the beginning of the file path refers to the directory that contains the
+playbook file.
 
 The default search path looks for templates/files in:
 
 - The same directory as the playbook
 - In a subdirectory (by the playbook) named "files".
+- The current working directory.
 
 ## Debugging
 
@@ -286,6 +282,22 @@ Example:
       dst: /usr/bin/program
       skip: if\_exists
       decrypt\_password: foobar
+
+### docs
+
+This is a "no-op" task that is used to document the playbook.  Adding a "desc"
+argument uses the associated value when "up --help" is run to list the available
+playbooks as a description of what the playbook does.
+
+Arguments:
+
+- desc: String describing what this playbook does.  Generally kept short, say 60
+  characters.
+
+Example:
+
+    - docs:
+      desc: "Create a new release script."
 
 ### echo
 

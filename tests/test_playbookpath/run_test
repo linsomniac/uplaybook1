@@ -2,7 +2,6 @@
 #
 #  Test the playbook path searching
 
-"$UP" filebare
 "$UP" fileyml
 "$UP" fileyml.yml
 "$UP" dir
