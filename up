@@ -697,6 +697,14 @@ class CommandProcessor:
     def run_tasks(self, tasks: List) -> None:
         """Run the given playbook tasks."""
         for statement in tasks:
+            if not hasattr(statement, "keys"):
+                tasks_str = str(tasks)[12:75]
+                sys.stderr.write(
+                    "ERROR: 'tasks' block does not look correct, did you forget to put a '-' at\n"
+                    f"       the beginning of the tasks?\n       {tasks_str}\n"
+                )
+                sys.exit(1)
+
             command = list(statement.keys())[0]
             command_value = statement[command]
             args = statement.copy()
@@ -994,12 +1002,32 @@ class CommandProcessor:
 
         os.remove(path)
 
-    def do_run(self, _, command: str) -> None:
+    def do_run(
+        self,
+        _,
+        command: str,
+        register_stdout: Union[str, None] = None,
+        register_stderr: Union[str, None] = None,
+        register_exit: Union[str, None] = None,
+    ) -> None:
         command = self.jinja_expand_str(command)
         self.debug(f"run({command})")
         sys.stdout.flush()
         sys.stderr.flush()
-        subprocess.run(command, shell=True)
+        p = subprocess.run(
+            command,
+            shell=True,
+            text=True,
+            stdout=subprocess.PIPE if register_stdout else None,
+            stderr=subprocess.PIPE if register_stderr else None,
+        )
+
+        if register_exit:
+            self.globals[register_exit] = p.returncode
+        if register_stdout:
+            self.globals[register_stdout] = p.stdout
+        if register_stderr:
+            self.globals[register_stderr] = p.stderr
 
     def do_cd(self, _, path: str) -> None:
         path = self.jinja_expand_str(path)

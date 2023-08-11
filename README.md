@@ -411,11 +411,17 @@ Run a shell command.
 Arguments:
 
 - command: A shell command to run (template expanded).
+- register_exit: The name of a variable that will be set with the process exit code.
+- register_stdout: The name of a variable that will be set with stdout of the run
+  program.
+- register_stderr: The name of a variable that will be set with the stderr of the run
+  program.
 
 Example:
 
     - run:
       command: "date"
+      register_exit: date_exit_code
 
 ### stat
 
