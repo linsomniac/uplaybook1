@@ -1,4 +1,6 @@
 ---
+- docs:
+  - desc: An example playbook demonstraing a variety of the Ansible-inspired syntax.
 #  Most values below can use jinja2 templating syntax
 - vars:
   #  pull the suffix from the environment $EXAMPLE_SUFFIX, or empty string if not set

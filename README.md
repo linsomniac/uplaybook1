@@ -1,29 +1,32 @@
-# uPlaybook -- An Ansible-Inspired Micro Playbook Runner
+# Work faster and smarter with uPlaybook.
 
-This is an extremely small, yaml-driven tool for doing simple file deployment and
-templating sorts of tasks.  It only requires Python and a couple of libraries.
+uPlaybook automates project/snippet setup  and system configuration tasks with easy playbooks you
+can run from the commandline.  Using an Ansible-inspired YAML syntax to allow you to quickly and
+securely set up configuration files, run commands, and create new projects or project components
+from templates.  Think shell scripting, but with an emphasis on templating and secrets management.
+
+Key Features:
+
+- Simple Ansible-inspired YAML syntax for quick automation
+- Built-in encryption - Secure sensitive data like passwords and keys
+- Cross-platform - works on Linux, MacOS, and Windows
+- Templating with Jinja2 for dynamic configurations
+- Flexible templating - Customize with Jinja2 templates
+- Arguments and prompts customize each run
+- Friendly CLI - Run playbooks easily with intuitive commands and prompting 
+- Minimal dependencies - just Python 3 and a couple libraries!
 
 uPlaybook can do cookiecutter-like tasks: populating projects or running tasks, and
 has prompts for filling in missing information, and a search path so that
 project-specific playbooks or user-defined playbooks and templates can be used simply
-from the command-line.  `up new-project --name foo --type extended`
+from the command-line.  `up new-release --name 2023-08-09 ---patch`
 
 While uPlaybook provides many shell-like commands ("tasks" in uPlaybook), it has the
-benefit of a rich templating language to manipulate placed files, and can also handle
-encrypted files.
+benefit of a rich templating language to manipulate deployed files, and can also handle
+encrypted files to keep your secrets and passwords safe.
 
 My initial use case was much like what Ansible solves: a way to deploy control and
 configuration files, including passwords and ssh keys, during new machine deployment.
-
-## Features
-
-- Templating (jinja2) of files, paths, and configuration values.
-- Built in encryption/decryption (Fernet, via Python cryptography module)
-- Ansible-inspired yaml configuration.
-- Environment variables are brought into template namepsace.
-- Helpers for fernet encrypt/decrypt.
-- Good command-line argument handling.
-- Can ask the user for playbook options via "--up-ask" or "up_ask: true" in vars.
 
 ## Requirements
 

@@ -1,4 +1,6 @@
 ---
+- docs:
+  desc: Decrypt the secrets files (file1, file2, file3)
 - args:
   options:
     - name: password
