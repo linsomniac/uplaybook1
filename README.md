@@ -45,8 +45,10 @@ From the "examples/encryptall/up.yml" example:
     - args:
       options:
         - name: password
+          label: Password
           description: Password for the encrypted files.
         - name: remove
+          label: "Remove unencrypted files?"
           type: bool
           default: true
           description: Whether to remove the unencrypted files when done.
@@ -96,9 +98,11 @@ For example:
   options:
     #  require the name of the role to create
     - name: role_name
+      label: "Role name"
       description: "The name of the role directory to create."
     #  Optionally, allow handlers to be disabled (default is true)
     - name: add_handlers
+      label: "Add handlers?"
       default: true
       type: bool
       description: "Whether to add handlers to the role."
@@ -117,8 +121,10 @@ The "options" can contain elements with the following values:
 - name (Required): The name of the argument, this is the name used to access the value in
   templating, so it must be a valid Python identifier (no hyphens, for example), and
   is the name of the argument.
+- label (Defaults to "name"): A label to be used in the prompt when the user does
+  "--up-ask" to prompt for values.
 - type (Optional): Type of the value, defaults to "str".  Can also be "bool" for true/false
-  arguments.
+  arguments, or "password" for passwords.
 - default (Optional): Gives a default value.  If a default is given, the argument is
   optional.  This means it can be specified using "--<NAME>", otherwise it is a
   positional argument and must always be supplied on the command line by position.

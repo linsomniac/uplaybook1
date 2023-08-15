@@ -22,6 +22,7 @@ import socket
 import stat
 import multiprocessing
 import itertools
+import getpass
 from collections import OrderedDict, namedtuple
 from typing import Union, Tuple, List, Iterator, IO, Dict
 import base64
@@ -221,6 +222,7 @@ class SimplePrompt:
         prompt_with: dict[str, object] = {
             "bool": self.ask_bool,
             "str": self.ask_str,
+            "password": self.ask_password,
         }
         default = globals[arg["name"]]
 
@@ -228,7 +230,7 @@ class SimplePrompt:
 
     def make_prompt(self, arg: dict[str, object], default: object) -> str:
         "Create a prompt string, including default value and line break if too long"
-        prompt = f"{arg['label']}[{default}]"
+        prompt = f"{arg.get('label', arg['name'])}[{default}]"
         if len(prompt) + len(str(default)) > 70:
             prompt = prompt + "\n> "
         else:
@@ -255,6 +257,15 @@ class SimplePrompt:
         prompt = self.make_prompt(arg, default)
         val = input(prompt)
         if val.strip() == "":
+            return default
+        return val
+
+    def ask_password(self, arg: dict[str, object], default: str) -> str:
+        "Ask the user for a password"
+        prompt = self.make_prompt(arg, default)
+        val = getpass.getpass(prompt)
+        if val.strip() == "":
+            print("(FYI: Empty password provided)")
             return default
         return val
 
@@ -884,7 +895,12 @@ class CommandProcessor:
             if "description" in arg:
                 kw_args["help"] = arg["description"]
             if "type" in arg:
-                kw_args["type"] = {"bool": bool, "str": str, "int": int}[arg["type"]]
+                kw_args["type"] = {
+                    "bool": bool,
+                    "str": str,
+                    "int": int,
+                    "password": str,
+                }[arg["type"]]
             if kw_args["type"] is bool:
                 kw_args["action"] = argparse.BooleanOptionalAction
 
