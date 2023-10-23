@@ -1,11 +1,21 @@
-# Work faster and smarter with uPlaybook.
+# Work faster and smarter with uPlaybook1.
 
-uPlaybook automates project/snippet setup  and system configuration tasks with easy playbooks you
+uPlaybook1 automates project/snippet setup  and system configuration tasks with easy playbooks you
 can run from the commandline.  Using an Ansible-inspired YAML syntax to allow you to quickly and
 securely set up configuration files, run commands, and create new projects or project components
 from templates.  Think shell scripting, but with an emphasis on templating and secrets management.
 
-Key Features:
+## Note about uPlaybook1
+
+I've built a "next gen" version I was calling "uPlaybook2", but as uPlaybook had
+little adoption I've decided to rename the original to "uPlaybook1", and have
+uPlaybook2 take over.
+
+uPlaybook1 has the benefit of being a single Python file with minimal dependencies
+outside the standard library, and being developed to work on Windows systems (as well
+as Linux and Mac), so it may be a good choice there.
+
+## Key Features:
 
 - Simple Ansible-inspired YAML syntax for quick automation
 - Built-in encryption - Secure sensitive data like passwords and keys
